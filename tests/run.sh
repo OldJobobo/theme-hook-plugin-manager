@@ -415,6 +415,38 @@ test_thpm_enable_disable_and_list() {
   assert_contains "$output" "Plugin not found: missing-plugin" "thpm enable reports missing plugin"
 }
 
+test_thpm_hides_removed_bundled_plugins() {
+  local home_dir="$TMP_ROOT/thpm-hidden-home"
+  local bin_dir="$TMP_ROOT/thpm-hidden-bin"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local output
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$hook_dir" "$bin_dir"
+  printf '#!/usr/bin/env bash\nsource "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"\n' > "$hook_dir/10-tmux.sh"
+  printf '#!/usr/bin/env bash\nsource "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"\n' > "$hook_dir/50-cliamp.sh.sample"
+  printf '#!/usr/bin/env bash\nsource "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"\n' > "$hook_dir/30-vscode.sh"
+  make_stub_bin "$bin_dir" omarchy-hook 'exit 0'
+
+  output="$(run_thpm "$home_dir" list)"
+  assert_contains "$output" "vscode" "thpm list still shows visible plugins"
+  assert_not_contains "$output" "tmux" "thpm list hides tmux"
+  assert_not_contains "$output" "cliamp" "thpm list hides cliamp"
+  assert_file_exists "$hook_dir/10-tmux.sh.sample" "thpm list disables hidden active tmux hook"
+  assert_file_missing "$hook_dir/10-tmux.sh" "thpm list removes active hidden tmux hook"
+
+  output="$(run_thpm "$home_dir" enable tmux)"
+  assert_contains "$output" "Plugin not found: tmux" "thpm enable cannot enable hidden tmux plugin"
+  assert_file_exists "$hook_dir/10-tmux.sh.sample" "thpm enable leaves hidden tmux disabled"
+
+  output="$(run_thpm "$home_dir" disable cliamp)"
+  assert_contains "$output" "Plugin not found: cliamp" "thpm disable treats hidden cliamp plugin as missing"
+
+  output="$(PATH="$bin_dir:$PATH" THPM_THEME_ENV="$ROOT_DIR/lib/theme-env.sh" HOME="$home_dir" "$ROOT_DIR/thpm" doctor tmux 2>&1 || true)"
+  assert_contains "$output" "plugin not found: tmux" "thpm doctor treats hidden tmux plugin as missing"
+  assert_not_contains "$output" "tmux command" "thpm doctor skips hidden tmux checks"
+}
+
 test_thpm_discord_plugins_are_mutually_exclusive() {
   local home_dir="$TMP_ROOT/thpm-discord-mutual-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
@@ -2389,6 +2421,10 @@ test_install_preserves_disabled_plugins_and_installs_files() {
   assert_file_missing "$hook_dir/10-branding.sh" "install does not enable branding plugin by default"
   assert_file_exists "$hook_dir/11-discord-system24.sh.sample" "install disables discord system24 plugin by default"
   assert_file_missing "$hook_dir/11-discord-system24.sh" "install does not enable discord system24 plugin by default"
+  assert_file_exists "$hook_dir/10-tmux.sh.sample" "install hides tmux as disabled sample"
+  assert_file_missing "$hook_dir/10-tmux.sh" "install does not enable hidden tmux plugin"
+  assert_file_exists "$hook_dir/50-cliamp.sh.sample" "install hides cliamp as disabled sample"
+  assert_file_missing "$hook_dir/50-cliamp.sh" "install does not enable hidden cliamp plugin"
   assert_file_exists "$hook_dir/30-vscode.sh" "install enables bundled plugins by default"
 }
 
@@ -2469,6 +2505,8 @@ test_install_recovers_all_bundled_plugins_disabled_by_bad_update() {
   assert_file_exists "$hook_dir/40-zen.sh" "install re-enables zen after all-disabled update fallout"
   assert_file_missing "$hook_dir/00-fish.sh.sample" "install clears fish sample after all-disabled update fallout"
   assert_file_exists "$hook_dir/10-branding.sh.sample" "install keeps branding disabled after all-disabled update recovery"
+  assert_file_exists "$hook_dir/10-tmux.sh.sample" "install keeps hidden tmux disabled after all-disabled update recovery"
+  assert_file_exists "$hook_dir/50-cliamp.sh.sample" "install keeps hidden cliamp disabled after all-disabled update recovery"
   assert_file_missing "$hook_dir/40-zen.sh.sample" "install clears zen sample after all-disabled update fallout"
 }
 
@@ -2961,6 +2999,7 @@ main() {
   test_thpm_install_skills_prompts_and_installs_codex_skill
   test_thpm_install_skills_accepts_explicit_skill_and_agent
   test_thpm_enable_disable_and_list
+  test_thpm_hides_removed_bundled_plugins
   test_thpm_discord_plugins_are_mutually_exclusive
   test_thpm_manages_custom_hooks
   test_thpm_reads_hook_dir_from_config

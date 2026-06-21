@@ -107,6 +107,35 @@ THPM_SKILLS_DIR="${THPM_SKILLS_DIR:-$(thpm_config_path paths skills_dir "$THPM_S
 if [[ ! -d "$THPM_SKILLS_DIR" && -d "$THPM_SCRIPT_DIR/skills" ]]; then
     THPM_SKILLS_DIR="$THPM_SCRIPT_DIR/skills"
 fi
+THPM_HIDDEN_PLUGINS=(
+    tmux
+    cliamp
+)
+
+thpm_plugin_hidden() {
+    local plugin="$1"
+    local hidden
+
+    for hidden in "${THPM_HIDDEN_PLUGINS[@]}"; do
+        [[ "$plugin" == "$hidden" ]] && return 0
+    done
+
+    return 1
+}
+
+hide_hidden_hooks() {
+    local hook
+    local hook_name
+
+    [[ -d "$HOOK_DIR" ]] || return 0
+    for hook in "$HOOK_DIR"/*.sh; do
+        [[ -f "$hook" ]] || continue
+        hook_name=$(basename "$hook" .sh)
+        hook_name=${hook_name#*-}
+        thpm_plugin_hidden "$hook_name" || continue
+        mv "$hook" "$hook.sample"
+    done
+}
 
 thpm_supports_color() {
     [[ -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]
@@ -278,17 +307,20 @@ disable_conflicting_discord_plugin() {
 get_hook_list() {
     enabled_hooks=()
     disabled_hooks=()
+    hide_hidden_hooks
     if [[ -d "$HOOK_DIR" ]]; then
         for hook in "$HOOK_DIR"/*.sh; do
             [[ -f "$hook" ]] || continue
             hook_name=$(basename "$hook" .sh)
             hook_name=${hook_name#*-}
+            thpm_plugin_hidden "$hook_name" && continue
             enabled_hooks+=("$hook_name")
         done
         for hook in "$HOOK_DIR"/*.sh.sample; do
             [[ -f "$hook" ]] || continue
             hook_name=$(basename "$hook" .sh.sample)
             hook_name=${hook_name#*-}
+            thpm_plugin_hidden "$hook_name" && continue
             disabled_hooks+=("$hook_name")
         done
     fi
@@ -307,6 +339,7 @@ get_hook_list() {
 
 enable_hooks() {
     hooks_array=("${@:2}")
+    hide_hidden_hooks
     for new_hook in "${hooks_array[@]}"; do
         found=0
         if [[ -d "$HOOK_DIR" ]]; then
@@ -316,6 +349,7 @@ enable_hooks() {
                 hook_name=${hook_name%.sample}
                 hook_name=${hook_name%.sh}
                 hook_name=${hook_name#*-}
+                thpm_plugin_hidden "$hook_name" && continue
                 if [[ "$hook_name" == "$new_hook" ]]; then
                     found=1
                     enabled_hook="${old_hook%.sample}"
@@ -336,6 +370,7 @@ enable_hooks() {
 
 disable_hooks() {
     hooks_array=("${@:2}")
+    hide_hidden_hooks
     for new_hook in "${hooks_array[@]}"; do
         found=0
         if [[ -d "$HOOK_DIR" ]]; then
@@ -345,6 +380,7 @@ disable_hooks() {
                 hook_name=${hook_name%.sample}
                 hook_name=${hook_name%.sh}
                 hook_name=${hook_name#*-}
+                thpm_plugin_hidden "$hook_name" && continue
                 if [[ "$hook_name" == "$new_hook" ]]; then
                     found=1
                     disabled_hook="$old_hook"
@@ -663,9 +699,11 @@ doctor_find_plugin() {
     local plugin="$1"
     local hook
 
+    hide_hidden_hooks
     [[ -d "$HOOK_DIR" ]] || return 1
     for hook in "$HOOK_DIR"/*.sh "$HOOK_DIR"/*.sh.sample; do
         [[ -f "$hook" ]] || continue
+        thpm_plugin_hidden "$(doctor_name_from_path "$hook")" && continue
         if [[ "$(doctor_name_from_path "$hook")" == "$plugin" ]]; then
             printf '%s\n' "$hook"
             return 0
@@ -1037,9 +1075,11 @@ doctor_check_duplicates() {
     local seen=" "
 
     [[ -d "$HOOK_DIR" ]] || return 0
+    hide_hidden_hooks
     for hook in "$HOOK_DIR"/*.sh "$HOOK_DIR"/*.sh.sample; do
         [[ -f "$hook" ]] || continue
         plugin="$(doctor_name_from_path "$hook")"
+        thpm_plugin_hidden "$plugin" && continue
         if [[ "$seen" == *" $plugin "* ]]; then
             doctor_warn "duplicate plugin name detected: $plugin"
         else
@@ -1094,6 +1134,7 @@ th_doctor() {
     local requested="${2:-}"
     local hook
 
+    hide_hidden_hooks
     doctor_errors=0
     doctor_warnings=0
     echo "THPM Doctor"
@@ -1111,10 +1152,12 @@ th_doctor() {
     elif [[ -d "$HOOK_DIR" ]]; then
         for hook in "$HOOK_DIR"/*.sh; do
             [[ -f "$hook" ]] || continue
+            thpm_plugin_hidden "$(doctor_name_from_path "$hook")" && continue
             doctor_check_plugin "$hook"
         done
         for hook in "$HOOK_DIR"/*.sh.sample; do
             [[ -f "$hook" ]] || continue
+            thpm_plugin_hidden "$(doctor_name_from_path "$hook")" && continue
             doctor_check_plugin "$hook"
         done
     fi

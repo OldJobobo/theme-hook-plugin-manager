@@ -62,6 +62,11 @@ default_disabled_plugins=(
     11-discord-system24.sh
 )
 
+hidden_plugins=(
+    10-tmux.sh
+    50-cliamp.sh
+)
+
 is_bundled_plugin() {
     local name="$1"
     local plugin
@@ -224,6 +229,12 @@ if [[ "$recover_all_disabled" -eq 1 ]]; then
         rm -f "$HOME/.config/omarchy/hooks/theme-set.d/$plugin.sample"
     done
 fi
+
+for plugin in "${hidden_plugins[@]}"; do
+    if [[ -f "$HOME/.config/omarchy/hooks/theme-set.d/$plugin" ]]; then
+        mv -f "$HOME/.config/omarchy/hooks/theme-set.d/$plugin" "$HOME/.config/omarchy/hooks/theme-set.d/$plugin.sample"
+    fi
+done
 
 for plugin in "${default_disabled_plugins[@]}"; do
     plugin_was_enabled "$plugin" && continue
