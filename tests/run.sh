@@ -2990,6 +2990,212 @@ print_coverage_summary() {
   printf 'Note: this is script-level behavioral coverage, not line coverage.\n'
 }
 
+test_cliamp_uses_ansi_default_without_native() {
+  local home_dir="$TMP_ROOT/cliamp-ansi-home"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local bin_dir="$TMP_ROOT/cliamp-ansi-bin"
+  local cfg="$home_dir/.config/cliamp/config.toml"
+
+  write_colors_fixture "$home_dir"   # theme ships no cliamp.toml -> ANSI default
+  mkdir -p "$hook_dir" "$bin_dir" "$(dirname "$cfg")"
+  cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$hook_dir/50-cliamp.sh"
+  chmod +x "$hook_dir/50-cliamp.sh"
+  printf 'theme = "omarchy"\nvolume = -6\n[navidrome]\npassword = "p#1"\n' > "$cfg"
+  make_stub_bin "$bin_dir" cliamp 'exit 0'
+
+  PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+
+  assert_file_missing "$home_dir/.config/cliamp/themes/omarchy.toml" "cliamp ANSI mode writes no generated theme"
+  assert_contains "$(cat "$cfg")" 'theme = ""' "cliamp ANSI mode empties theme so cliamp uses its ANSI default"
+  assert_contains "$(cat "$cfg")" 'password = "p#1"' "cliamp ANSI mode preserves other config keys"
+}
+
+test_cliamp_installs_canonical_native_dropping_inline_comments() {
+  local home_dir="$TMP_ROOT/cliamp-native-home"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local bin_dir="$TMP_ROOT/cliamp-native-bin"
+  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local out="$home_dir/.config/cliamp/themes/omarchy.toml"
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$hook_dir" "$bin_dir"
+  cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$hook_dir/50-cliamp.sh"
+  chmod +x "$hook_dir/50-cliamp.sh"
+  # The theme ships its own cliamp.toml WITH inline comments. Older cliamp builds may reject these
+  # (folding the comment into the value), so the hook canonicalises. Real-binary oracle (run
+  # locally; CI has no cliamp): `cliamp theme list | grep -qx '  omarchy'`. Here we assert the
+  # canonical output that makes cliamp accept it (clean uppercased hex, no comments).
+  cat > "$theme_dir/cliamp.toml" <<'EOF'
+# thpm:cliamp-use-native
+accent = "#2488cb"   # muted purple — primary interactive
+bright_fg = "#d2833b"  # warm parchment
+fg = "#9287b0"       # dim charcoal
+green = "#238e9e"
+yellow = "#d8979a"
+red = "#D93C76"
+EOF
+  make_stub_bin "$bin_dir" cliamp 'exit 0'
+
+  PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+
+  assert_file_exists "$out" "cliamp installs the theme's own cliamp.toml"
+  assert_contains "$(cat "$out")" 'accent    = "#2488CB"' "cliamp native install canonicalises hex (uppercased)"
+  assert_not_contains "$(cat "$out")" "muted purple" "cliamp native install strips inline comments older cliamp builds would reject"
+  assert_contains "$(cat "$home_dir/.config/cliamp/config.toml")" 'theme = "omarchy"' "cliamp native install selects the omarchy theme"
+}
+
+test_cliamp_falls_back_to_ansi_for_incomplete_native() {
+  local home_dir="$TMP_ROOT/cliamp-incomplete-home"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local bin_dir="$TMP_ROOT/cliamp-incomplete-bin"
+  local theme_dir="$home_dir/.config/omarchy/current/theme"
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$hook_dir" "$bin_dir"
+  cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$hook_dir/50-cliamp.sh"
+  chmod +x "$hook_dir/50-cliamp.sh"
+  printf '# thpm:cliamp-use-native\naccent = "#2488cb"\nbright_fg = "#d2833b"\n' > "$theme_dir/cliamp.toml"   # opted-in but only 2 of 6 keys
+  make_stub_bin "$bin_dir" cliamp 'exit 0'
+
+  PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+
+  assert_file_missing "$home_dir/.config/cliamp/themes/omarchy.toml" "cliamp drops an incomplete native cliamp.toml"
+  assert_contains "$(cat "$home_dir/.config/cliamp/config.toml")" 'theme = ""' "cliamp falls back to ANSI for an incomplete native theme"
+}
+
+test_cliamp_ignores_native_without_opt_in_marker() {
+  local home_dir="$TMP_ROOT/cliamp-no-marker-home"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local bin_dir="$TMP_ROOT/cliamp-no-marker-bin"
+  local theme_dir="$home_dir/.config/omarchy/current/theme"
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$hook_dir" "$bin_dir"
+  cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$hook_dir/50-cliamp.sh"
+  chmod +x "$hook_dir/50-cliamp.sh"
+  # A complete, valid cliamp.toml WITHOUT the opt-in marker (e.g. an auto-generated artifact).
+  # Mere existence must NOT activate native -> ANSI.
+  cat > "$theme_dir/cliamp.toml" <<'EOF'
+accent = "#2488cb"
+bright_fg = "#d2833b"
+fg = "#9287b0"
+green = "#238e9e"
+yellow = "#d8979a"
+red = "#d93c76"
+EOF
+  make_stub_bin "$bin_dir" cliamp 'exit 0'
+
+  PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+
+  assert_file_missing "$home_dir/.config/cliamp/themes/omarchy.toml" "cliamp ignores a native cliamp.toml without the opt-in marker"
+  assert_contains "$(cat "$home_dir/.config/cliamp/config.toml")" 'theme = ""' "cliamp uses ANSI when a native theme lacks the opt-in marker"
+}
+
+test_cliamp_requires_exact_opt_in_marker() {
+  local bin_dir="$TMP_ROOT/cliamp-nearmiss-bin"
+  local colors='accent = "#2488cb"\nbright_fg = "#d2833b"\nfg = "#9287b0"\ngreen = "#238e9e"\nyellow = "#d8979a"\nred = "#d93c76"\n'
+  local i=0 mark home_dir hook_dir theme_dir
+
+  mkdir -p "$bin_dir"
+  make_stub_bin "$bin_dir" cliamp 'exit 0'
+
+  # Only the EXACT line activates native. Near-misses (trailing text, leading whitespace, different
+  # case) must stay ANSI. The trailing-text case fails under a substring match (grep -qF), so it
+  # guards against loosening grep -qxF. (A marker inside a value is covered by the same whole-line
+  # match and needs no separate case.)
+  for mark in '# thpm:cliamp-use-native please' '  # thpm:cliamp-use-native' '# THPM:CLIAMP-USE-NATIVE'; do
+    i=$((i + 1))
+    home_dir="$TMP_ROOT/cliamp-nearmiss-$i"
+    hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+    theme_dir="$home_dir/.config/omarchy/current/theme"
+    write_colors_fixture "$home_dir"
+    mkdir -p "$hook_dir"
+    cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$hook_dir/50-cliamp.sh"
+    chmod +x "$hook_dir/50-cliamp.sh"
+    printf '%s\n%b' "$mark" "$colors" > "$theme_dir/cliamp.toml"
+
+    PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+
+    assert_file_missing "$home_dir/.config/cliamp/themes/omarchy.toml" "cliamp near-miss marker [$mark] does NOT activate native"
+    assert_contains "$(cat "$home_dir/.config/cliamp/config.toml")" 'theme = ""' "cliamp near-miss marker [$mark] falls back to ANSI"
+  done
+}
+
+test_cliamp_fails_loud_when_config_cannot_be_created() {
+  local home_dir="$TMP_ROOT/cliamp-cfgfail-home"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local bin_dir="$TMP_ROOT/cliamp-cfgfail-bin"
+  local cliamp_dir="$home_dir/.config/cliamp"
+  local output status
+
+  write_colors_fixture "$home_dir"   # no cliamp.toml -> ANSI path -> _set_theme creates config
+  mkdir -p "$hook_dir" "$bin_dir" "$cliamp_dir"
+  cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$hook_dir/50-cliamp.sh"
+  chmod +x "$hook_dir/50-cliamp.sh"
+  make_stub_bin "$bin_dir" cliamp 'exit 0'
+  chmod 500 "$cliamp_dir"   # config.toml cannot be created here
+
+  output="$(PATH="$bin_dir:$PATH" HOME="$home_dir" XDG_CONFIG_HOME="$home_dir/.config" bash "$hook_dir/50-cliamp.sh" 2>&1)"
+  status=$?
+  chmod 700 "$cliamp_dir"
+
+  if [[ "$status" -ne 0 ]]; then
+    pass "cliamp exits non-zero when config.toml cannot be created"
+  else
+    fail "cliamp exits non-zero when config.toml cannot be created"
+  fi
+  assert_not_contains "$output" "SUCCESS" "cliamp does not report SUCCESS when config write fails"
+}
+
+test_cliamp_only_removes_its_exact_owned_file() {
+  local bin_dir="$TMP_ROOT/cliamp-owner-bin"
+  local h1="$TMP_ROOT/cliamp-owner-keep"
+  local h2="$TMP_ROOT/cliamp-owner-remove"
+
+  mkdir -p "$bin_dir"
+  make_stub_bin "$bin_dir" cliamp 'exit 0'
+
+  # (a) first line only CONTAINS the marker as a substring (e.g. a user backup) -> must be KEPT
+  write_colors_fixture "$h1"
+  mkdir -p "$h1/.config/omarchy/hooks/theme-set.d" "$h1/.config/cliamp/themes"
+  cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$h1/.config/omarchy/hooks/theme-set.d/50-cliamp.sh"
+  chmod +x "$h1/.config/omarchy/hooks/theme-set.d/50-cliamp.sh"
+  printf '# thpm:cliamp-omarchy-backup\nmy backup\n' > "$h1/.config/cliamp/themes/omarchy.toml"
+  PATH="$bin_dir:$PATH" run_theme_hooks "$h1" >/dev/null
+  assert_file_exists "$h1/.config/cliamp/themes/omarchy.toml" "cliamp keeps a file whose first line only contains the owner marker as a substring"
+
+  # (b) first line IS exactly the owner marker -> removed during ANSI tidy-up
+  write_colors_fixture "$h2"
+  mkdir -p "$h2/.config/omarchy/hooks/theme-set.d" "$h2/.config/cliamp/themes"
+  cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$h2/.config/omarchy/hooks/theme-set.d/50-cliamp.sh"
+  chmod +x "$h2/.config/omarchy/hooks/theme-set.d/50-cliamp.sh"
+  printf '# thpm:cliamp-omarchy\nold\n' > "$h2/.config/cliamp/themes/omarchy.toml"
+  PATH="$bin_dir:$PATH" run_theme_hooks "$h2" >/dev/null
+  assert_file_missing "$h2/.config/cliamp/themes/omarchy.toml" "cliamp removes a file whose first line is exactly the owner marker"
+}
+
+test_cliamp_native_handles_crlf_opt_in_marker() {
+  local home_dir="$TMP_ROOT/cliamp-crlf-home"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local bin_dir="$TMP_ROOT/cliamp-crlf-bin"
+  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local out="$home_dir/.config/cliamp/themes/omarchy.toml"
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$hook_dir" "$bin_dir"
+  cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$hook_dir/50-cliamp.sh"
+  chmod +x "$hook_dir/50-cliamp.sh"
+  make_stub_bin "$bin_dir" cliamp 'exit 0'
+  # exact opt-in marker but CRLF line endings -> must still be recognised (not silently ANSI)
+  printf '# thpm:cliamp-use-native\r\naccent = "#2488cb"\r\nbright_fg = "#d2833b"\r\nfg = "#9287b0"\r\ngreen = "#238e9e"\r\nyellow = "#d8979a"\r\nred = "#d93c76"\r\n' > "$theme_dir/cliamp.toml"
+
+  PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+
+  assert_file_exists "$out" "cliamp recognises an exact opt-in marker with CRLF line endings"
+  assert_contains "$(cat "$out")" 'accent    = "#2488CB"' "cliamp canonicalises a CRLF native theme"
+  assert_contains "$(cat "$home_dir/.config/cliamp/config.toml")" 'theme = "omarchy"' "cliamp selects the native theme for a CRLF opt-in file"
+}
+
 main() {
   test_shell_syntax
   test_installer_bundled_plugin_inventory_matches_hooks
@@ -3054,6 +3260,14 @@ main() {
   test_foot_plugin_writes_osc_sequences_to_tty
   test_cava_plugin_writes_theme_and_updates_config
   test_cava_plugin_does_not_duplicate_theme_setting
+  test_cliamp_uses_ansi_default_without_native
+  test_cliamp_installs_canonical_native_dropping_inline_comments
+  test_cliamp_falls_back_to_ansi_for_incomplete_native
+  test_cliamp_ignores_native_without_opt_in_marker
+  test_cliamp_requires_exact_opt_in_marker
+  test_cliamp_fails_loud_when_config_cannot_be_created
+  test_cliamp_only_removes_its_exact_owned_file
+  test_cliamp_native_handles_crlf_opt_in_marker
   test_superfile_plugin_writes_theme_and_requests_restart
   test_swaync_plugin_installs_theme_files_and_reloads
   test_swaync_plugin_prefers_named_theme_over_current_theme
