@@ -109,7 +109,6 @@ if [[ ! -d "$THPM_SKILLS_DIR" && -d "$THPM_SCRIPT_DIR/skills" ]]; then
 fi
 THPM_HIDDEN_PLUGINS=(
     tmux
-    cliamp
 )
 
 thpm_plugin_hidden() {

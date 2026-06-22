@@ -64,6 +64,9 @@ default_disabled_plugins=(
 
 hidden_plugins=(
     10-tmux.sh
+)
+
+restored_enabled_plugins=(
     50-cliamp.sh
 )
 
@@ -78,10 +81,22 @@ is_bundled_plugin() {
     return 1
 }
 
+is_restored_enabled_plugin() {
+    local name="$1"
+    local plugin
+
+    for plugin in "${restored_enabled_plugins[@]}"; do
+        [[ "$plugin" == "$name" ]] && return 0
+    done
+
+    return 1
+}
+
 disabled_plugins=()
 enabled_plugins=()
 enabled_bundled_count=0
 disabled_bundled_count=0
+recoverable_bundled_count=$((${#bundled_plugins[@]} - ${#restored_enabled_plugins[@]}))
 recover_all_disabled=0
 record_disabled_plugin() {
     local plugin="$1"
@@ -90,6 +105,7 @@ record_disabled_plugin() {
     name=$(basename "$plugin")
     name=${name%.sample}
     is_bundled_plugin "$name" || return 0
+    is_restored_enabled_plugin "$name" && return 0
     disabled_plugins+=("$name")
     disabled_bundled_count=$((disabled_bundled_count + 1))
 }
@@ -126,7 +142,7 @@ if [[ -d "$HOME/.config/omarchy/hooks/theme-set.d" ]]; then
     done
 fi
 
-if [[ "$enabled_bundled_count" -eq 0 && "$disabled_bundled_count" -eq "${#bundled_plugins[@]}" ]]; then
+if [[ "$enabled_bundled_count" -eq 0 && "$disabled_bundled_count" -eq "$recoverable_bundled_count" ]]; then
     echo "All bundled plugins are disabled; treating this as update fallout and restoring defaults."
     disabled_plugins=()
     recover_all_disabled=1
@@ -229,6 +245,10 @@ if [[ "$recover_all_disabled" -eq 1 ]]; then
         rm -f "$HOME/.config/omarchy/hooks/theme-set.d/$plugin.sample"
     done
 fi
+
+for plugin in "${restored_enabled_plugins[@]}"; do
+    rm -f "$HOME/.config/omarchy/hooks/theme-set.d/$plugin.sample"
+done
 
 for plugin in "${hidden_plugins[@]}"; do
     if [[ -f "$HOME/.config/omarchy/hooks/theme-set.d/$plugin" ]]; then

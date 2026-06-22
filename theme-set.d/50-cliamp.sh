@@ -33,7 +33,7 @@ skipped() { echo -e "\033[0;34m[SKIPPED]\e[0m $1 not found. Skipping.."; exit 0;
 command -v cliamp >/dev/null 2>&1 || skipped "cliamp"
 
 # ---- resolve the active theme directory (same chain thpm uses for colors_file) ----
-_expand() { case "$1" in "~") printf '%s\n' "$HOME";; "~/"*) printf '%s/%s\n' "$HOME" "${1#\~/}";; *) printf '%s\n' "$1";; esac; }
+_expand() { case "$1" in "~") printf '%s\n' "$HOME";; \~/*) printf '%s/%s\n' "$HOME" "${1#\~/}";; *) printf '%s\n' "$1";; esac; }
 THPM_CONFIG_FILE="${THPM_CONFIG_FILE:-$config_root/thpm/config.toml}"
 _cfg() {
     [ -f "$THPM_CONFIG_FILE" ] || return 0
@@ -87,7 +87,13 @@ native="$theme_src/cliamp.toml"
 if [ -f "$native" ] && tr -d '\r' < "$native" | grep -qxF "$NATIVE_OPT_IN"; then
     declare -A NV; usable=1
     for k in accent bright_fg fg green yellow red; do
-        v=$(_toml_hex "$native" "$k"); [ -n "$v" ] && NV[$k]="$v" || { usable=0; break; }
+        v=$(_toml_hex "$native" "$k")
+        if [ -n "$v" ]; then
+            NV[$k]="$v"
+        else
+            usable=0
+            break
+        fi
     done
     if [ "$usable" = 1 ]; then
         tmp="$theme_dir/.omarchy.toml.$$"
@@ -101,7 +107,8 @@ if [ -f "$native" ] && tr -d '\r' < "$native" | grep -qxF "$NATIVE_OPT_IN"; then
             printf 'green     = "%s"\n' "${NV[green]}"
             printf 'yellow    = "%s"\n' "${NV[yellow]}"
             printf 'red       = "%s"\n' "${NV[red]}"
-        } > "$tmp" && mv -f "$tmp" "$target" || { rm -f "$tmp"; error "failed installing cliamp.toml"; }
+        } > "$tmp" || { rm -f "$tmp"; error "failed installing cliamp.toml"; }
+        mv -f "$tmp" "$target" || { rm -f "$tmp"; error "failed installing cliamp.toml"; }
         _set_theme omarchy
         success "cliamp themed from the theme's own cliamp.toml."
         exit 0

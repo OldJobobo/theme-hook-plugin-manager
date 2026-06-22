@@ -415,7 +415,7 @@ test_thpm_enable_disable_and_list() {
   assert_contains "$output" "Plugin not found: missing-plugin" "thpm enable reports missing plugin"
 }
 
-test_thpm_hides_removed_bundled_plugins() {
+test_thpm_hides_tmux_but_keeps_cliamp_visible() {
   local home_dir="$TMP_ROOT/thpm-hidden-home"
   local bin_dir="$TMP_ROOT/thpm-hidden-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
@@ -431,7 +431,7 @@ test_thpm_hides_removed_bundled_plugins() {
   output="$(run_thpm "$home_dir" list)"
   assert_contains "$output" "vscode" "thpm list still shows visible plugins"
   assert_not_contains "$output" "tmux" "thpm list hides tmux"
-  assert_not_contains "$output" "cliamp" "thpm list hides cliamp"
+  assert_contains "$output" "cliamp" "thpm list keeps cliamp visible"
   assert_file_exists "$hook_dir/10-tmux.sh.sample" "thpm list disables hidden active tmux hook"
   assert_file_missing "$hook_dir/10-tmux.sh" "thpm list removes active hidden tmux hook"
 
@@ -439,8 +439,9 @@ test_thpm_hides_removed_bundled_plugins() {
   assert_contains "$output" "Plugin not found: tmux" "thpm enable cannot enable hidden tmux plugin"
   assert_file_exists "$hook_dir/10-tmux.sh.sample" "thpm enable leaves hidden tmux disabled"
 
-  output="$(run_thpm "$home_dir" disable cliamp)"
-  assert_contains "$output" "Plugin not found: cliamp" "thpm disable treats hidden cliamp plugin as missing"
+  output="$(run_thpm "$home_dir" enable cliamp)"
+  assert_contains "$output" "Plugin Enabled: cliamp" "thpm enable can restore visible cliamp plugin"
+  assert_file_exists "$hook_dir/50-cliamp.sh" "thpm enable restores cliamp hook"
 
   output="$(PATH="$bin_dir:$PATH" THPM_THEME_ENV="$ROOT_DIR/lib/theme-env.sh" HOME="$home_dir" "$ROOT_DIR/thpm" doctor tmux 2>&1 || true)"
   assert_contains "$output" "plugin not found: tmux" "thpm doctor treats hidden tmux plugin as missing"
@@ -2423,8 +2424,8 @@ test_install_preserves_disabled_plugins_and_installs_files() {
   assert_file_missing "$hook_dir/11-discord-system24.sh" "install does not enable discord system24 plugin by default"
   assert_file_exists "$hook_dir/10-tmux.sh.sample" "install hides tmux as disabled sample"
   assert_file_missing "$hook_dir/10-tmux.sh" "install does not enable hidden tmux plugin"
-  assert_file_exists "$hook_dir/50-cliamp.sh.sample" "install hides cliamp as disabled sample"
-  assert_file_missing "$hook_dir/50-cliamp.sh" "install does not enable hidden cliamp plugin"
+  assert_file_exists "$hook_dir/50-cliamp.sh" "install enables cliamp by default"
+  assert_file_missing "$hook_dir/50-cliamp.sh.sample" "install does not hide cliamp as disabled sample"
   assert_file_exists "$hook_dir/30-vscode.sh" "install enables bundled plugins by default"
 }
 
@@ -2506,7 +2507,8 @@ test_install_recovers_all_bundled_plugins_disabled_by_bad_update() {
   assert_file_missing "$hook_dir/00-fish.sh.sample" "install clears fish sample after all-disabled update fallout"
   assert_file_exists "$hook_dir/10-branding.sh.sample" "install keeps branding disabled after all-disabled update recovery"
   assert_file_exists "$hook_dir/10-tmux.sh.sample" "install keeps hidden tmux disabled after all-disabled update recovery"
-  assert_file_exists "$hook_dir/50-cliamp.sh.sample" "install keeps hidden cliamp disabled after all-disabled update recovery"
+  assert_file_exists "$hook_dir/50-cliamp.sh" "install restores cliamp enabled after all-disabled update recovery"
+  assert_file_missing "$hook_dir/50-cliamp.sh.sample" "install clears cliamp sample after all-disabled update recovery"
   assert_file_missing "$hook_dir/40-zen.sh.sample" "install clears zen sample after all-disabled update fallout"
 }
 
@@ -2638,6 +2640,30 @@ test_install_preserves_existing_sample_disabled_plugin() {
   assert_success "$status" "install with existing sample exits successfully"
   assert_file_exists "$hook_dir/30-vscode.sh.sample" "install preserves existing .sample disabled plugin"
   assert_file_missing "$hook_dir/30-vscode.sh" "install keeps .sample plugin inactive"
+}
+
+test_install_restores_cliamp_hidden_sample() {
+  local home_dir="$TMP_ROOT/install-cliamp-restore-home"
+  local bin_dir="$TMP_ROOT/install-cliamp-restore-bin"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local status
+
+  rm -f "$TMP_ROOT/install-git-branch.log"
+  rm -f "$TMP_ROOT/install-git-args.log"
+  mkdir -p "$hook_dir" "$bin_dir"
+  printf '#!/usr/bin/env bash\n' > "$hook_dir/50-cliamp.sh.sample"
+  make_stub_bin "$bin_dir" pacman 'exit 0'
+  make_stub_bin "$bin_dir" sudo 'printf "sudo should not be called\n" >&2; exit 1'
+  make_stub_bin "$bin_dir" omarchy-hook 'exit 0'
+  make_stub_bin "$bin_dir" omarchy-show-done 'exit 0'
+  make_install_git_stub "$bin_dir"
+
+  PATH="$bin_dir:$PATH" HOME="$home_dir" "$ROOT_DIR/install.sh" >/dev/null 2>&1
+  status=$?
+
+  assert_success "$status" "install restores cliamp from hidden sample successfully"
+  assert_file_exists "$hook_dir/50-cliamp.sh" "install restores cliamp hook active"
+  assert_file_missing "$hook_dir/50-cliamp.sh.sample" "install removes stale hidden cliamp sample"
 }
 
 test_install_disabled_sample_wins_over_stale_active_plugin() {
@@ -3205,7 +3231,7 @@ main() {
   test_thpm_install_skills_prompts_and_installs_codex_skill
   test_thpm_install_skills_accepts_explicit_skill_and_agent
   test_thpm_enable_disable_and_list
-  test_thpm_hides_removed_bundled_plugins
+  test_thpm_hides_tmux_but_keeps_cliamp_visible
   test_thpm_discord_plugins_are_mutually_exclusive
   test_thpm_manages_custom_hooks
   test_thpm_reads_hook_dir_from_config
@@ -3288,6 +3314,7 @@ main() {
   test_install_preserves_enabled_branding_plugin
   test_install_respects_branch_override
   test_install_preserves_existing_sample_disabled_plugin
+  test_install_restores_cliamp_hidden_sample
   test_install_disabled_sample_wins_over_stale_active_plugin
   test_install_preserves_custom_omarchy_hook
   test_install_preserves_custom_sample_hook
