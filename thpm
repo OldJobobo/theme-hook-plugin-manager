@@ -994,6 +994,11 @@ doctor_check_plugin_specific() {
             doctor_check_file "$HOME/.config/omarchy/current/theme/colors.css" "SwayNC colors.css"
         ;;
         foot-live-colors) doctor_check_file "$HOME/.config/omarchy/current/theme/foot.ini" "Omarchy Foot theme" ;;
+        zellij)
+            doctor_check_command zellij Zellij
+            doctor_check_file "$HOME/.config/zellij/themes/current.kdl" "Zellij current theme"
+            doctor_check_file "$HOME/.config/zellij/config.kdl" "Zellij config"
+        ;;
         vscode) doctor_check_editor_theme_extension "VS Code" code "$HOME/.vscode/extensions" ;;
         cursor) doctor_check_editor_theme_extension Cursor cursor "$HOME/.cursor/extensions" ;;
         windsurf) doctor_check_editor_theme_extension Windsurf windsurf "$HOME/.windsurf/extensions" ;;

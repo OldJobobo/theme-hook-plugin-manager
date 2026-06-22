@@ -180,6 +180,16 @@ The bundled Hermes plugin generates:
 
 The generated theme is named `omarchy-current` and labeled `Omarchy Current`. Users should select it inside Hermes, then restart Hermes after `thpm run` or a theme change so the app reloads the generated colors.
 
+## Zellij Theme File
+
+The bundled Zellij plugin generates:
+
+```text
+~/.config/zellij/themes/current.kdl
+```
+
+Users should set `theme "current"` once in `~/.config/zellij/config.kdl`. The plugin only manages the generated theme file. It does not edit Zellij keybindings, layouts, or the main config.
+
 ## Doctor Checks
 
 `thpm doctor` is read-only. It checks the Omarchy hook directory, the shared

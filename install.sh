@@ -38,6 +38,7 @@ bundled_plugins=(
     10-superfile.sh
     10-tmux.sh
     10-vicinae.sh
+    10-zellij.sh
     15-typora.sh
     20-nwg-dock-hyprland.sh
     20-zed.sh
@@ -60,6 +61,7 @@ bundled_plugins=(
 default_disabled_plugins=(
     10-branding.sh
     11-discord-system24.sh
+    10-zellij.sh
 )
 
 hidden_plugins=(

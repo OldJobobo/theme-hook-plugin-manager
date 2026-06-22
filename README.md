@@ -63,6 +63,22 @@ The installer checks for `adw-gtk-theme` and can prompt to install it.
 
 Some apps also require one-time selection of the generated Omarchy theme inside their own settings.
 
+### Zellij
+
+The Zellij plugin writes the active Omarchy colors to:
+
+```text
+~/.config/zellij/themes/current.kdl
+```
+
+Enable the plugin with `thpm enable zellij`, run `thpm run`, and set this once in `~/.config/zellij/config.kdl`:
+
+```kdl
+theme "current"
+```
+
+The plugin does not edit Zellij keybindings, layouts, or the main config. If the active Omarchy theme ships `zellij.kdl`, that file is copied into `current.kdl`; otherwise the plugin generates a Zellij theme from `colors.toml`.
+
 ## Supported Plugins
 
 **Browsers:** Firefox, Qutebrowser, Zen Browser
@@ -71,7 +87,7 @@ Some apps also require one-time selection of the generated Omarchy theme inside 
 
 **Desktop and UI:** Discord clients using Vencord-compatible themes, optional Discord System24 theme, GTK apps, Hermes, nwg-dock-hyprland, Omarchy branding, Qt6 apps using qt6ct, SwayNC, Vicinae
 
-**Terminal and CLI:** cliamp, Cava, Fish, Foot live colors, fzf, Superfile, tmux
+**Terminal and CLI:** cliamp, Cava, Fish, Foot live colors, fzf, Superfile, tmux, Zellij
 
 **Games and media:** Heroic Games Launcher, Spotify using Spicetify, Steam
 
