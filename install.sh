@@ -53,6 +53,7 @@ bundled_plugins=(
     40-hermes.sh
     40-qutebrowser.sh
     40-steam.sh
+    40-telegram.sh
     40-zen.sh
     50-cliamp.sh
     50-heroic.sh
