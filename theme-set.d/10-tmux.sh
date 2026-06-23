@@ -5,7 +5,7 @@ if ! command -v tmux >/dev/null 2>&1; then
     skipped "tmux"
 fi
 
-source_file="$HOME/.config/omarchy/current/theme/tmux.conf"
+source_file="$THPM_CURRENT_THEME_DIR/tmux.conf"
 target_file="$HOME/.config/tmux/omarchy-theme.conf"
 source_line="source-file ~/.config/tmux/omarchy-theme.conf"
 

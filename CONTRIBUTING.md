@@ -55,7 +55,7 @@ omarchy-hook theme-set
 Theme colors come from:
 
 ```text
-~/.config/omarchy/current/theme/colors.toml
+~/.local/state/omarchy/current/theme/colors.toml
 ```
 
 Do not add new integrations that read generated terminal theme files as the source of truth.

@@ -3,7 +3,7 @@
 # shellcheck source=../lib/theme-env.sh
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-output_file="$HOME/.config/omarchy/current/theme/vencord-system24.theme.css"
+output_file="$THPM_CURRENT_THEME_DIR/vencord-system24.theme.css"
 possible_paths=(
     "$HOME/.config/Vencord/themes"
     "$HOME/.config/vesktop/themes"

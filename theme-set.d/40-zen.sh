@@ -163,7 +163,7 @@ fi
 
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-output_file="$HOME/.config/omarchy/current/theme/zen.css"
+output_file="$THPM_CURRENT_THEME_DIR/zen.css"
 
 if ! command -v zen-browser >/dev/null 2>&1; then
     skipped "Zen Browser"

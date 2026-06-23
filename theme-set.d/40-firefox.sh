@@ -154,7 +154,7 @@ fi
 
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-output_file="$HOME/.config/omarchy/current/theme/firefox.css"
+output_file="$THPM_CURRENT_THEME_DIR/firefox.css"
 
 if ! command -v firefox >/dev/null 2>&1; then
     skipped "Firefox"

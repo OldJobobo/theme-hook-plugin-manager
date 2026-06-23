@@ -46,7 +46,31 @@ _cfg() {
           if (sec==s && lhs==k) { r=$0; sub(/^[^=]*=/,"",r); print unq(trim(strip(r))); exit } }' "$THPM_CONFIG_FILE"
 }
 if [ -n "${THPM_COLORS_FILE:-}" ]; then colors_file="$THPM_COLORS_FILE"
-else cf="$(_cfg paths colors_file)"; [ -n "$cf" ] && colors_file="$(_expand "$cf")" || colors_file="$config_root/omarchy/current/theme/colors.toml"; fi
+else
+    cf="$(_cfg paths colors_file)"
+    quattro_colors_file="$HOME/.local/state/omarchy/current/theme/colors.toml"
+    legacy_colors_file="$config_root/omarchy/current/theme/colors.toml"
+    if [ -n "$cf" ]; then
+        configured_colors_file="$(_expand "$cf")"
+        if [ "$configured_colors_file" != "$legacy_colors_file" ] && [ "$configured_colors_file" != "$quattro_colors_file" ]; then
+            colors_file="$configured_colors_file"
+        elif [ -f "$quattro_colors_file" ]; then
+            colors_file="$quattro_colors_file"
+        elif [ -f "$configured_colors_file" ]; then
+            colors_file="$configured_colors_file"
+        elif [ -f "$legacy_colors_file" ]; then
+            colors_file="$legacy_colors_file"
+        else
+            colors_file="$quattro_colors_file"
+        fi
+    elif [ -f "$quattro_colors_file" ]; then
+        colors_file="$quattro_colors_file"
+    elif [ -f "$legacy_colors_file" ]; then
+        colors_file="$legacy_colors_file"
+    else
+        colors_file="$quattro_colors_file"
+    fi
+fi
 theme_src="$(dirname "$colors_file")"
 
 mkdir -p "$theme_dir"

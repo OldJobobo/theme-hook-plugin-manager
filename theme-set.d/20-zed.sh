@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-new_zed_file="$HOME/.config/omarchy/current/theme/zed.json"
+new_zed_file="$THPM_CURRENT_THEME_DIR/zed.json"
 
 create_dynamic_theme() {
 cat > "$new_zed_file" << EOF

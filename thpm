@@ -101,12 +101,47 @@ THPM_UPDATE_CACHE="${THPM_UPDATE_CACHE:-$THPM_STATE_DIR/update-check}"
 THPM_UPDATE_CHECK_INTERVAL="${THPM_UPDATE_CHECK_INTERVAL:-$(thpm_config_value updates check_interval_seconds 86400)}"
 THPM_UPDATE_CHECK="${THPM_UPDATE_CHECK:-$(thpm_config_value updates check true)}"
 THPM_THEME_ENV_DEFAULT="${THPM_THEME_ENV:-$(thpm_config_path paths theme_env "$HOME/.local/share/thpm/lib/theme-env.sh")}"
-THPM_COLORS_FILE_DEFAULT="${THPM_COLORS_FILE:-$(thpm_config_path paths colors_file "$HOME/.config/omarchy/current/theme/colors.toml")}"
 THPM_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THPM_SKILLS_DIR="${THPM_SKILLS_DIR:-$(thpm_config_path paths skills_dir "$THPM_STATE_DIR/skills")}"
 if [[ ! -d "$THPM_SKILLS_DIR" && -d "$THPM_SCRIPT_DIR/skills" ]]; then
     THPM_SKILLS_DIR="$THPM_SCRIPT_DIR/skills"
 fi
+THPM_QUATTRO_COLORS_FILE="$HOME/.local/state/omarchy/current/theme/colors.toml"
+THPM_LEGACY_COLORS_FILE="$HOME/.config/omarchy/current/theme/colors.toml"
+
+thpm_resolve_colors_file() {
+    local configured_colors_file
+    local configured_colors_file_expanded
+
+    if [[ -n "${THPM_COLORS_FILE:-}" ]]; then
+        thpm_expand_path "$THPM_COLORS_FILE"
+        return 0
+    fi
+
+    configured_colors_file="$(thpm_config_get paths colors_file 2>/dev/null || true)"
+    if [[ -n "$configured_colors_file" ]]; then
+        configured_colors_file_expanded="$(thpm_expand_path "$configured_colors_file")"
+        if [[ "$configured_colors_file_expanded" != "$THPM_LEGACY_COLORS_FILE" &&
+              "$configured_colors_file_expanded" != "$THPM_QUATTRO_COLORS_FILE" ]]; then
+            printf '%s\n' "$configured_colors_file_expanded"
+            return 0
+        fi
+    fi
+
+    if [[ -f "$THPM_QUATTRO_COLORS_FILE" ]]; then
+        printf '%s\n' "$THPM_QUATTRO_COLORS_FILE"
+    elif [[ -n "${configured_colors_file_expanded:-}" && -f "$configured_colors_file_expanded" ]]; then
+        printf '%s\n' "$configured_colors_file_expanded"
+    elif [[ -f "$THPM_LEGACY_COLORS_FILE" ]]; then
+        printf '%s\n' "$THPM_LEGACY_COLORS_FILE"
+    else
+        printf '%s\n' "$THPM_QUATTRO_COLORS_FILE"
+    fi
+}
+
+THPM_COLORS_FILE_DEFAULT="$(thpm_resolve_colors_file)"
+THPM_CURRENT_THEME_DIR="${THPM_COLORS_FILE_DEFAULT%/*}"
+THPM_LIGHT_MODE_FILE="$THPM_CURRENT_THEME_DIR/light.mode"
 THPM_HIDDEN_PLUGINS=(
     tmux
 )
@@ -412,7 +447,7 @@ post_enable() {
         ;;
         "gtk")
             if command -v gsettings >/dev/null 2>&1; then
-                if [ -f "$HOME/.config/omarchy/current/theme/light.mode" ]; then
+                if [ -f "$THPM_LIGHT_MODE_FILE" ]; then
                     gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-tmp
                     gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3
                 else
@@ -458,7 +493,7 @@ post_disable() {
         ;;
         "gtk")
             if command -v gsettings >/dev/null 2>&1; then
-                if [ -f "$HOME/.config/omarchy/current/theme/light.mode" ]; then
+                if [ -f "$THPM_LIGHT_MODE_FILE" ]; then
                     gsettings set org.gnome.desktop.interface gtk-theme Adwaita
                 else
                     gsettings set org.gnome.desktop.interface gtk-theme Adwaita-dark
@@ -911,7 +946,7 @@ doctor_check_editor_theme_extension() {
 
     doctor_check_command "$command_name" "$name"
     doctor_check_command jq jq
-    if [[ -f "$HOME/.config/omarchy/current/theme/vscode.json" ]]; then
+    if [[ -f "$THPM_CURRENT_THEME_DIR/vscode.json" ]]; then
         doctor_info "$name uses current theme vscode.json; generated Base16 extension patch is skipped"
         return 0
     fi
@@ -976,7 +1011,7 @@ doctor_check_plugin_specific() {
         superfile) doctor_check_command spf Superfile ;;
         tmux)
             doctor_check_command tmux tmux
-            doctor_check_file "$HOME/.config/omarchy/current/theme/tmux.conf" "Omarchy tmux theme"
+            doctor_check_file "$THPM_CURRENT_THEME_DIR/tmux.conf" "Omarchy tmux theme"
         ;;
         vicinae) doctor_check_command vicinae Vicinae ;;
         typora) doctor_check_command typora Typora ;;
@@ -991,9 +1026,9 @@ doctor_check_plugin_specific() {
         swaync)
             doctor_check_command swaync SwayNC
             doctor_check_command swaync-client swaync-client
-            doctor_check_file "$HOME/.config/omarchy/current/theme/colors.css" "SwayNC colors.css"
+            doctor_check_file "$THPM_CURRENT_THEME_DIR/colors.css" "SwayNC colors.css"
         ;;
-        foot-live-colors) doctor_check_file "$HOME/.config/omarchy/current/theme/foot.ini" "Omarchy Foot theme" ;;
+        foot-live-colors) doctor_check_file "$THPM_CURRENT_THEME_DIR/foot.ini" "Omarchy Foot theme" ;;
         zellij)
             doctor_check_command zellij Zellij
             doctor_check_file "$HOME/.config/zellij/config.kdl" "Zellij config"

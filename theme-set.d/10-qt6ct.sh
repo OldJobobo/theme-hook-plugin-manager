@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-new_qt_file="$HOME/.config/omarchy/current/theme/qt6ct.conf"
+new_qt_file="$THPM_CURRENT_THEME_DIR/qt6ct.conf"
 
 if ! command -v qt6ct >/dev/null 2>&1; then
     skipped "Qt6ct"

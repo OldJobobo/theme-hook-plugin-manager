@@ -113,7 +113,45 @@ THPM_RESTART_NOTIFICATION_COOLDOWN="$(thpm_config_value notifications.restart co
 THPM_RESTART_NOTIFICATION_TITLE="$(thpm_config_value notifications.restart title "Theme Hook Plugin Manager")"
 THPM_RESTART_NOTIFICATION_MESSAGE="$(thpm_config_value notifications.restart message "{app} requires a restart to apply theme.")"
 
-input_file="${THPM_COLORS_FILE:-$(thpm_config_path paths colors_file "$HOME/.config/omarchy/current/theme/colors.toml")}"
+THPM_QUATTRO_COLORS_FILE="$HOME/.local/state/omarchy/current/theme/colors.toml"
+THPM_LEGACY_COLORS_FILE="$HOME/.config/omarchy/current/theme/colors.toml"
+
+thpm_resolve_colors_file() {
+    local configured_colors_file
+    local configured_colors_file_expanded
+
+    if [[ -n "${THPM_COLORS_FILE:-}" ]]; then
+        thpm_expand_path "$THPM_COLORS_FILE"
+        return 0
+    fi
+
+    configured_colors_file="$(thpm_config_get paths colors_file 2>/dev/null || true)"
+    if [[ -n "$configured_colors_file" ]]; then
+        configured_colors_file_expanded="$(thpm_expand_path "$configured_colors_file")"
+        if [[ "$configured_colors_file_expanded" != "$THPM_LEGACY_COLORS_FILE" &&
+              "$configured_colors_file_expanded" != "$THPM_QUATTRO_COLORS_FILE" ]]; then
+            printf '%s\n' "$configured_colors_file_expanded"
+            return 0
+        fi
+    fi
+
+    if [[ -f "$THPM_QUATTRO_COLORS_FILE" ]]; then
+        printf '%s\n' "$THPM_QUATTRO_COLORS_FILE"
+    elif [[ -n "${configured_colors_file_expanded:-}" && -f "$configured_colors_file_expanded" ]]; then
+        printf '%s\n' "$configured_colors_file_expanded"
+    elif [[ -f "$THPM_LEGACY_COLORS_FILE" ]]; then
+        printf '%s\n' "$THPM_LEGACY_COLORS_FILE"
+    else
+        printf '%s\n' "$THPM_QUATTRO_COLORS_FILE"
+    fi
+}
+
+input_file="$(thpm_resolve_colors_file)"
+THPM_COLORS_FILE_RESOLVED="$input_file"
+THPM_CURRENT_THEME_DIR="${THPM_COLORS_FILE_RESOLVED%/*}"
+THPM_THEME_NAME_FILE="${THPM_CURRENT_THEME_DIR%/*}/theme.name"
+THPM_LIGHT_MODE_FILE="$THPM_CURRENT_THEME_DIR/light.mode"
+export THPM_COLORS_FILE_RESOLVED THPM_CURRENT_THEME_DIR THPM_THEME_NAME_FILE THPM_LIGHT_MODE_FILE
 
 success() {
     echo -e "\e[32m[SUCCESS]\e[0m $1"
@@ -134,7 +172,7 @@ error() {
 }
 
 if [[ ! -f "$input_file" ]]; then
-    error "colors.toml not found at $input_file. Ensure your theme is compatible with Omarchy 3.3+ and includes colors.toml."
+    error "colors.toml not found at $input_file. Ensure your theme is compatible with Omarchy and includes colors.toml."
 fi
 
 extract_color() {

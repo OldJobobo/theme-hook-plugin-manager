@@ -8,7 +8,7 @@ fi
 config_dir="$HOME/.config/zellij"
 config_file="$config_dir/config.kdl"
 legacy_theme_file="$config_dir/themes/current.kdl"
-source_file="$HOME/.config/omarchy/current/theme/zellij.kdl"
+source_file="$THPM_CURRENT_THEME_DIR/zellij.kdl"
 managed_start="// thpm-zellij-theme-start"
 managed_end="// thpm-zellij-theme-end"
 

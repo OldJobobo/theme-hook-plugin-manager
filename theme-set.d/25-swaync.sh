@@ -6,9 +6,9 @@ source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
 set -euo pipefail
 
-SOURCE_DIR="$HOME/.config/omarchy/current/theme"
+SOURCE_DIR="$THPM_CURRENT_THEME_DIR"
 TARGET_DIR="$HOME/.config/swaync"
-THEME_NAME_FILE="$HOME/.config/omarchy/current/theme.name"
+THEME_NAME_FILE="$THPM_THEME_NAME_FILE"
 THEME_STORE_DIR="$HOME/.config/omarchy/themes"
 
 if ! command -v swaync >/dev/null 2>&1 || ! command -v swaync-client >/dev/null 2>&1; then

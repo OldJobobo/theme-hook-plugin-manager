@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-output_file="$HOME/.config/omarchy/current/theme/steam.css"
+output_file="$THPM_CURRENT_THEME_DIR/steam.css"
 
 if ! command -v steam >/dev/null 2>&1; then
     skipped "Steam"

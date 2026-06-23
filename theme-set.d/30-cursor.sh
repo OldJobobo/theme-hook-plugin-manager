@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
-output_file="$HOME/.config/omarchy/current/theme/vscode_colors.json"
+output_file="$THPM_CURRENT_THEME_DIR/vscode_colors.json"
 
 if ! command -v cursor >/dev/null 2>&1; then
     skipped "Cursor"
@@ -11,7 +11,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # check current theme for vscode.json
-if [[ -f "$HOME/.config/omarchy/current/theme/vscode.json" ]]; then
+if [[ -f "$THPM_CURRENT_THEME_DIR/vscode.json" ]]; then
     exit 0
 fi
 

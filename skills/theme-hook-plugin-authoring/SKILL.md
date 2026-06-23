@@ -17,7 +17,7 @@ When working inside the `theme-hook-plugin-manager` repo, prefer these source fi
 - `tests/run.sh`: behavioral expectations and portability guards.
 - `README.md`: user-facing install, command, and troubleshooting language.
 
-Treat generated app theme files as outputs, not inputs. Theme data comes from `~/.config/omarchy/current/theme/colors.toml`.
+Treat generated app theme files as outputs, not inputs. Theme data comes from the active theme colors file resolved by `lib/theme-env.sh`, preferring `~/.local/state/omarchy/current/theme/colors.toml`.
 
 ## Plugin Contract
 

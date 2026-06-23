@@ -135,7 +135,7 @@ contract_value() {
 
 write_colors_fixture() {
   local home_dir="$1"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
 
   mkdir -p "$theme_dir"
   cat > "$theme_dir/colors.toml" <<'EOF'
@@ -323,11 +323,11 @@ test_project_omarchy_default_contract() {
   assert_contains "$(cat "$ROOT_DIR/docs/plugins.md")" "~/$colors_file" "plugin docs show contracted Omarchy colors file"
   assert_contains "$(cat "$ROOT_DIR/README.md")" "~/$hook_dir/" "README shows contracted Omarchy hook directory"
   assert_contains "$(cat "$ROOT_DIR/README.md")" "native Omarchy \`$hook_name.d\` hooks" "README documents direct Omarchy hook model"
-  assert_contains "$(cat "$ROOT_DIR/theme-set.d/10-gtk.sh")" "\$HOME/$light_mode_file" "GTK plugin uses contracted Omarchy light mode marker"
-  assert_contains "$(cat "$ROOT_DIR/theme-set.d/25-swaync.sh")" "\$HOME/$theme_name_file" "SwayNC plugin uses contracted Omarchy theme name file"
+  assert_contains "$(cat "$ROOT_DIR/theme-set.d/10-gtk.sh")" "\$THPM_LIGHT_MODE_FILE" "GTK plugin uses resolved Omarchy light mode marker"
+  assert_contains "$(cat "$ROOT_DIR/theme-set.d/25-swaync.sh")" "\$THPM_THEME_NAME_FILE" "SwayNC plugin uses resolved Omarchy theme name file"
   assert_contains "$(cat "$ROOT_DIR/theme-set.d/25-swaync.sh")" "\$HOME/$theme_store_dir" "SwayNC plugin uses contracted Omarchy theme store"
   assert_contains "$(cat "$ROOT_DIR/theme-set.d/35-obsidian-terminal.sh")" "\${THPM_THEME_ENV:-\$HOME/$shared_runtime}" "direct-run plugin fallback uses contracted shared runtime"
-  assert_contains "$(cat "$ROOT_DIR/lib/theme-env.sh")" "Omarchy 3.3+" "theme env error explains contracted colors.toml-era Omarchy requirement"
+  assert_contains "$(cat "$ROOT_DIR/lib/theme-env.sh")" "includes colors.toml" "theme env error explains colors.toml requirement"
 }
 
 test_thpm_help() {
@@ -918,7 +918,7 @@ test_thpm_gtk_post_enable_disable_updates_gsettings() {
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
   local gsettings_log="$TMP_ROOT/gsettings.log"
 
-  mkdir -p "$hook_dir" "$bin_dir" "$home_dir/.config/omarchy/current/theme"
+  mkdir -p "$hook_dir" "$bin_dir" "$home_dir/.local/state/omarchy/current/theme"
   printf '#!/usr/bin/env bash\n' > "$hook_dir/10-gtk.sh.sample"
   cat > "$bin_dir/gsettings" <<EOF
 #!/usr/bin/env bash
@@ -998,7 +998,7 @@ test_theme_set_handles_commented_palette_color() {
   mkdir -p "$hook_dir" "$bin_dir"
   make_stub_bin "$bin_dir" pgrep 'exit 1'
   make_stub_bin "$bin_dir" notify-send 'exit 0'
-  sed -i 's/^color0 =/# color0 =/' "$home_dir/.config/omarchy/current/theme/colors.toml"
+  sed -i 's/^color0 =/# color0 =/' "$home_dir/.local/state/omarchy/current/theme/colors.toml"
 
   cat > "$hook_dir/10-capture.sh" <<EOF
 #!/usr/bin/env bash
@@ -1092,7 +1092,7 @@ test_theme_env_reads_colors_file_from_config() {
 
   mkdir -p "$config_dir"
   write_colors_fixture "$home_dir/default"
-  cp "$home_dir/default/.config/omarchy/current/theme/colors.toml" "$colors_file"
+  cp "$home_dir/default/.local/state/omarchy/current/theme/colors.toml" "$colors_file"
   cat > "$config_dir/config.toml" <<'EOF'
 [paths]
 colors_file = "~/custom-colors.toml"
@@ -1106,6 +1106,73 @@ EOF
   HOME="$home_dir" XDG_CONFIG_HOME="$home_dir/.config" bash "$home_dir/config-colors-hook.sh"
 
   assert_eq "101112" "$(cat "$output_file")" "theme env reads colors_file from config.toml"
+}
+
+test_theme_env_prefers_quattro_theme_with_legacy_default_config() {
+  local home_dir="$TMP_ROOT/theme-env-quattro-default-home"
+  local config_dir="$home_dir/.config/thpm"
+  local output_file="$TMP_ROOT/quattro-default-output"
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$config_dir"
+  cat > "$config_dir/config.toml" <<'EOF'
+[paths]
+colors_file = "~/.config/omarchy/current/theme/colors.toml"
+EOF
+  cat > "$home_dir/quattro-default-hook.sh" <<EOF
+#!/usr/bin/env bash
+source "$ROOT_DIR/lib/theme-env.sh"
+printf '%s|%s\n' "\$primary_background" "\$THPM_CURRENT_THEME_DIR" > "$output_file"
+EOF
+
+  HOME="$home_dir" XDG_CONFIG_HOME="$home_dir/.config" bash "$home_dir/quattro-default-hook.sh"
+
+  assert_eq "101112|$home_dir/.local/state/omarchy/current/theme" "$(cat "$output_file")" "theme env prefers Quattro theme over legacy default config path"
+}
+
+test_theme_env_falls_back_to_legacy_theme_dir() {
+  local home_dir="$TMP_ROOT/theme-env-legacy-fallback-home"
+  local legacy_theme_dir="$home_dir/.config/omarchy/current/theme"
+  local output_file="$TMP_ROOT/legacy-fallback-output"
+
+  write_colors_fixture "$home_dir/source"
+  mkdir -p "$legacy_theme_dir"
+  cp "$home_dir/source/.local/state/omarchy/current/theme/colors.toml" "$legacy_theme_dir/colors.toml"
+  cat > "$home_dir/legacy-fallback-hook.sh" <<EOF
+#!/usr/bin/env bash
+source "$ROOT_DIR/lib/theme-env.sh"
+printf '%s|%s\n' "\$primary_background" "\$THPM_CURRENT_THEME_DIR" > "$output_file"
+EOF
+
+  HOME="$home_dir" XDG_CONFIG_HOME="$home_dir/.config" bash "$home_dir/legacy-fallback-hook.sh"
+
+  assert_eq "101112|$legacy_theme_dir" "$(cat "$output_file")" "theme env falls back to legacy Omarchy theme directory"
+}
+
+test_thpm_doctor_uses_quattro_theme_with_legacy_default_config() {
+  local home_dir="$TMP_ROOT/doctor-quattro-default-home"
+  local config_dir="$home_dir/.config/thpm"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local runtime_dir="$home_dir/.local/share/thpm/lib"
+  local output
+  local status
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$config_dir" "$hook_dir" "$runtime_dir"
+  cp "$ROOT_DIR/lib/theme-env.sh" "$runtime_dir/theme-env.sh"
+  cat > "$config_dir/config.toml" <<'EOF'
+[paths]
+colors_file = "~/.config/omarchy/current/theme/colors.toml"
+EOF
+
+  set +e
+  output="$(run_thpm "$home_dir" doctor 2>&1)"
+  status=$?
+  set +e
+
+  assert_success "$status" "thpm doctor succeeds with Quattro theme and legacy default config path"
+  assert_contains "$output" "colors.toml found: $home_dir/.local/state/omarchy/current/theme/colors.toml" "thpm doctor reports resolved Quattro colors path"
+  assert_not_contains "$output" "colors.toml missing" "thpm doctor does not report missing legacy colors path"
 }
 
 test_restart_notification_can_be_disabled_globally() {
@@ -1198,7 +1265,7 @@ EOF
 test_branding_plugin_copies_theme_branding() {
   local home_dir="$TMP_ROOT/branding-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
 
   write_colors_fixture "$home_dir"
   mkdir -p "$hook_dir"
@@ -1214,7 +1281,7 @@ test_branding_plugin_copies_theme_branding() {
 
 test_branding_plugin_preserves_missing_sources() {
   local home_dir="$TMP_ROOT/branding-partial-home"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
   local branding_dir="$home_dir/.config/omarchy/branding"
 
   write_colors_fixture "$home_dir"
@@ -1249,7 +1316,7 @@ test_branding_plugin_skips_without_theme_branding() {
 test_branding_plugin_disable_stops_sync_until_enabled() {
   local home_dir="$TMP_ROOT/branding-disable-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
   local branding_dir="$home_dir/.config/omarchy/branding"
   local output
 
@@ -1300,7 +1367,7 @@ test_hook_plugins_use_portable_assumption_guards() {
 
 test_discord_system24_plugin_writes_theme_and_installs_existing_clients() {
   local home_dir="$TMP_ROOT/discord-system24-home"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
   local vencord_dir="$home_dir/.config/Vencord/themes"
   local vesktop_dir="$home_dir/.config/vesktop/themes"
   local missing_dir="$home_dir/.config/Equicord/themes"
@@ -1340,7 +1407,7 @@ test_discord_system24_plugin_writes_theme_and_installs_existing_clients() {
 
 test_discord_plugin_installs_theme_css_when_switching_back() {
   local home_dir="$TMP_ROOT/discord-plain-switchback-home"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
   local state_dir="$home_dir/.local/share/thpm"
   local vesktop_dir="$home_dir/.config/vesktop/themes"
   local theme_css
@@ -1365,7 +1432,7 @@ test_discord_plugin_installs_theme_css_when_switching_back() {
 
 test_discord_plugin_repairs_stale_current_css_from_theme_source() {
   local home_dir="$TMP_ROOT/discord-stale-current-home"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
   local source_dir="$home_dir/.config/omarchy/themes/noir"
   local state_dir="$home_dir/.local/share/thpm"
   local vesktop_dir="$home_dir/.config/vesktop/themes"
@@ -1376,7 +1443,7 @@ test_discord_plugin_repairs_stale_current_css_from_theme_source() {
 
   write_colors_fixture "$home_dir"
   mkdir -p "$source_dir" "$vesktop_dir"
-  printf 'noir\n' > "$home_dir/.config/omarchy/current/theme.name"
+  printf 'noir\n' > "$home_dir/.local/state/omarchy/current/theme.name"
   source_css="$source_dir/vencord.theme.css"
   current_css="$theme_dir/vencord.theme.css"
   generated="$state_dir/discord/vencord-base16.theme.css"
@@ -1394,7 +1461,7 @@ test_discord_plugin_repairs_stale_current_css_from_theme_source() {
 
 test_discord_plugin_generates_base16_fallback_without_theme_css() {
   local home_dir="$TMP_ROOT/discord-base16-fallback-home"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
   local state_dir="$home_dir/.local/share/thpm"
   local vesktop_dir="$home_dir/.config/vesktop/themes"
   local generated
@@ -1711,7 +1778,7 @@ test_qutebrowser_light_mode_change_requires_restart() {
 
   write_colors_fixture "$home_dir"
   mkdir -p "$hook_dir" "$bin_dir" "$(dirname "$draw_file")"
-  touch "$home_dir/.config/omarchy/current/theme/light.mode"
+  touch "$home_dir/.local/state/omarchy/current/theme/light.mode"
   cat > "$draw_file" <<'EOF'
 def apply(c):
     c.colors.webpage.preferred_color_scheme = 'dark'
@@ -1737,7 +1804,7 @@ test_fzf_plugin_writes_fish_theme() {
   local home_dir="$TMP_ROOT/fzf-home"
   local bin_dir="$TMP_ROOT/fzf-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local output_file="$home_dir/.config/omarchy/current/theme/fzf.fish"
+  local output_file="$home_dir/.local/state/omarchy/current/theme/fzf.fish"
 
   write_colors_fixture "$home_dir"
   mkdir -p "$hook_dir" "$bin_dir"
@@ -1759,7 +1826,7 @@ test_fish_plugin_writes_shell_colors() {
   local home_dir="$TMP_ROOT/fish-home"
   local bin_dir="$TMP_ROOT/fish-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local output_file="$home_dir/.config/omarchy/current/theme/colors.fish"
+  local output_file="$home_dir/.local/state/omarchy/current/theme/colors.fish"
 
   write_colors_fixture "$home_dir"
   mkdir -p "$hook_dir" "$bin_dir"
@@ -1869,7 +1936,7 @@ test_foot_plugin_reads_theme_and_logs_no_ttys() {
   local home_dir="$TMP_ROOT/foot-theme-home"
   local bin_dir="$TMP_ROOT/foot-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local foot_file="$home_dir/.config/omarchy/current/theme/foot.ini"
+  local foot_file="$home_dir/.local/state/omarchy/current/theme/foot.ini"
   local base_file="$home_dir/.config/foot/foot.ini"
   local log_file="/tmp/foot-theme-hook.log"
 
@@ -1904,7 +1971,7 @@ test_foot_plugin_writes_osc_sequences_to_tty() {
   local home_dir="$TMP_ROOT/foot-tty-home"
   local bin_dir="$TMP_ROOT/foot-tty-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local foot_file="$home_dir/.config/omarchy/current/theme/foot.ini"
+  local foot_file="$home_dir/.local/state/omarchy/current/theme/foot.ini"
   local wrapper="$TMP_ROOT/foot-tty-wrapper.sh"
   local output
 
@@ -2104,7 +2171,7 @@ test_zellij_plugin_prefers_theme_provided_kdl() {
   local home_dir="$TMP_ROOT/zellij-provided-home"
   local bin_dir="$TMP_ROOT/zellij-provided-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local source_file="$home_dir/.config/omarchy/current/theme/zellij.kdl"
+  local source_file="$home_dir/.local/state/omarchy/current/theme/zellij.kdl"
   local config_file="$home_dir/.config/zellij/config.kdl"
 
   write_colors_fixture "$home_dir"
@@ -2156,7 +2223,7 @@ test_swaync_plugin_installs_theme_files_and_reloads() {
   local home_dir="$TMP_ROOT/swaync-home"
   local bin_dir="$TMP_ROOT/swaync-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local source_dir="$home_dir/.config/omarchy/current/theme"
+  local source_dir="$home_dir/.local/state/omarchy/current/theme"
   local target_dir="$home_dir/.config/swaync"
   local reload_log="$TMP_ROOT/swaync-reload.log"
 
@@ -2188,7 +2255,7 @@ test_swaync_plugin_prefers_named_theme_over_current_theme() {
   local home_dir="$TMP_ROOT/swaync-named-home"
   local bin_dir="$TMP_ROOT/swaync-named-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local current_dir="$home_dir/.config/omarchy/current/theme"
+  local current_dir="$home_dir/.local/state/omarchy/current/theme"
   local named_dir="$home_dir/.config/omarchy/themes/named-theme"
   local target_dir="$home_dir/.config/swaync"
 
@@ -2196,7 +2263,7 @@ test_swaync_plugin_prefers_named_theme_over_current_theme() {
   mkdir -p "$hook_dir" "$bin_dir" "$named_dir"
   cp "$ROOT_DIR/theme-set.d/25-swaync.sh" "$hook_dir/25-swaync.sh"
   chmod +x "$hook_dir/25-swaync.sh"
-  printf 'named-theme\n' > "$home_dir/.config/omarchy/current/theme.name"
+  printf 'named-theme\n' > "$home_dir/.local/state/omarchy/current/theme.name"
   printf 'style-current\n' > "$current_dir/swaync.style.css"
   printf '{"config":"current"}\n' > "$current_dir/swaync.config.json"
   printf 'colors-current\n' > "$current_dir/colors.css"
@@ -2264,7 +2331,7 @@ test_tmux_plugin_installs_theme_and_reloads() {
   local home_dir="$TMP_ROOT/tmux-home"
   local bin_dir="$TMP_ROOT/tmux-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local theme_file="$home_dir/.config/omarchy/current/theme/tmux.conf"
+  local theme_file="$home_dir/.local/state/omarchy/current/theme/tmux.conf"
   local target_file="$home_dir/.config/tmux/omarchy-theme.conf"
   local config_file="$home_dir/.config/tmux/tmux.conf"
   local tmux_log="$TMP_ROOT/tmux.log"
@@ -2299,7 +2366,7 @@ test_tmux_plugin_prefers_existing_legacy_config() {
   local home_dir="$TMP_ROOT/tmux-legacy-home"
   local bin_dir="$TMP_ROOT/tmux-legacy-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local theme_file="$home_dir/.config/omarchy/current/theme/tmux.conf"
+  local theme_file="$home_dir/.local/state/omarchy/current/theme/tmux.conf"
   local legacy_config="$home_dir/.tmux.conf"
   local xdg_config="$home_dir/.config/tmux/tmux.conf"
 
@@ -2323,13 +2390,13 @@ test_vscode_plugin_skips_when_theme_provides_vscode_json() {
   local home_dir="$TMP_ROOT/vscode-skip-home"
   local bin_dir="$TMP_ROOT/vscode-skip-bin"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-  local generated_file="$home_dir/.config/omarchy/current/theme/vscode_colors.json"
+  local generated_file="$home_dir/.local/state/omarchy/current/theme/vscode_colors.json"
 
   write_colors_fixture "$home_dir"
   mkdir -p "$hook_dir" "$bin_dir"
   cp "$ROOT_DIR/theme-set.d/30-vscode.sh" "$hook_dir/30-vscode.sh"
   chmod +x "$hook_dir/30-vscode.sh"
-  printf '{"theme":"provided"}\n' > "$home_dir/.config/omarchy/current/theme/vscode.json"
+  printf '{"theme":"provided"}\n' > "$home_dir/.local/state/omarchy/current/theme/vscode.json"
   make_stub_bin "$bin_dir" code 'printf "code should not be called\n" >&2; exit 1'
   make_stub_bin "$bin_dir" pgrep 'exit 1'
   make_stub_bin "$bin_dir" notify-send 'exit 0'
@@ -2427,10 +2494,10 @@ test_theme_set_extracts_colors_with_leading_whitespace_and_comments() {
   local home_dir="$TMP_ROOT/spaced-colors-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
   local output_file="$TMP_ROOT/spaced-colors-output"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
 
   write_colors_fixture "$home_dir"
-  theme_dir="$home_dir/.config/omarchy/current/theme"
+  theme_dir="$home_dir/.local/state/omarchy/current/theme"
   cat > "$theme_dir/colors.toml" <<'EOF'
 # comments should be ignored
   background = "#010203" # inline comment
@@ -3163,7 +3230,7 @@ test_cliamp_installs_canonical_native_dropping_inline_comments() {
   local home_dir="$TMP_ROOT/cliamp-native-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
   local bin_dir="$TMP_ROOT/cliamp-native-bin"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
   local out="$home_dir/.config/cliamp/themes/omarchy.toml"
 
   write_colors_fixture "$home_dir"
@@ -3197,7 +3264,7 @@ test_cliamp_falls_back_to_ansi_for_incomplete_native() {
   local home_dir="$TMP_ROOT/cliamp-incomplete-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
   local bin_dir="$TMP_ROOT/cliamp-incomplete-bin"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
 
   write_colors_fixture "$home_dir"
   mkdir -p "$hook_dir" "$bin_dir"
@@ -3216,7 +3283,7 @@ test_cliamp_ignores_native_without_opt_in_marker() {
   local home_dir="$TMP_ROOT/cliamp-no-marker-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
   local bin_dir="$TMP_ROOT/cliamp-no-marker-bin"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
 
   write_colors_fixture "$home_dir"
   mkdir -p "$hook_dir" "$bin_dir"
@@ -3256,7 +3323,7 @@ test_cliamp_requires_exact_opt_in_marker() {
     i=$((i + 1))
     home_dir="$TMP_ROOT/cliamp-nearmiss-$i"
     hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
-    theme_dir="$home_dir/.config/omarchy/current/theme"
+    theme_dir="$home_dir/.local/state/omarchy/current/theme"
     write_colors_fixture "$home_dir"
     mkdir -p "$hook_dir"
     cp "$ROOT_DIR/theme-set.d/50-cliamp.sh" "$hook_dir/50-cliamp.sh"
@@ -3327,7 +3394,7 @@ test_cliamp_native_handles_crlf_opt_in_marker() {
   local home_dir="$TMP_ROOT/cliamp-crlf-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
   local bin_dir="$TMP_ROOT/cliamp-crlf-bin"
-  local theme_dir="$home_dir/.config/omarchy/current/theme"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
   local out="$home_dir/.config/cliamp/themes/omarchy.toml"
 
   write_colors_fixture "$home_dir"
@@ -3379,6 +3446,9 @@ main() {
   test_theme_set_reports_hook_failure
   test_theme_set_sends_restart_notification
   test_theme_env_reads_colors_file_from_config
+  test_theme_env_prefers_quattro_theme_with_legacy_default_config
+  test_theme_env_falls_back_to_legacy_theme_dir
+  test_thpm_doctor_uses_quattro_theme_with_legacy_default_config
   test_restart_notification_can_be_disabled_globally
   test_restart_notification_can_be_disabled_for_app
   test_restart_notification_supports_stdout_and_not_running

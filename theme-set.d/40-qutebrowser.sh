@@ -9,7 +9,7 @@ config_dir="$HOME/.config/qutebrowser"
 theme_dir="$config_dir/omarchy"
 draw_file="$theme_dir/draw.py"
 config_file="$config_dir/config.py"
-light_file="$HOME/.config/omarchy/current/theme/light.mode"
+light_file="$THPM_LIGHT_MODE_FILE"
 
 # Determine light/dark mode
 if [ -f "$light_file" ]; then

@@ -188,7 +188,7 @@ if [[ ! -f "$THPM_CONFIG_HOME/thpm/config.toml" ]]; then
 hook_dir = "~/.config/omarchy/hooks/theme-set.d"
 state_dir = "~/.local/share/thpm"
 theme_env = "~/.local/share/thpm/lib/theme-env.sh"
-colors_file = "~/.config/omarchy/current/theme/colors.toml"
+colors_file = "~/.local/state/omarchy/current/theme/colors.toml"
 skills_dir = "~/.local/share/thpm/skills"
 
 [updates]

@@ -19,7 +19,7 @@ Most bundled plugins translate Omarchy theme data into app-specific config files
 Color-focused plugins read the active Omarchy theme from:
 
 ```text
-~/.config/omarchy/current/theme/colors.toml
+~/.local/state/omarchy/current/theme/colors.toml
 ```
 
 Each integration is a normal shell plugin in:
@@ -57,7 +57,7 @@ The installer checks for `adw-gtk-theme` and can prompt to install it.
 ## Requirements
 
 - Omarchy
-- An Omarchy 3.3+ compatible theme with `colors.toml` for color-based plugins
+- An Omarchy theme with `colors.toml` for color-based plugins
 - Bash and standard Unix command-line tools
 - Target apps installed for the plugins you enable
 
@@ -98,8 +98,8 @@ The branding plugin is installed disabled by default. Enable it with `thpm enabl
 Once enabled, it syncs active-theme text logos into Omarchy's user branding files:
 
 ```text
-~/.config/omarchy/current/theme/about.txt
-~/.config/omarchy/current/theme/screensaver.txt
+~/.local/state/omarchy/current/theme/about.txt
+~/.local/state/omarchy/current/theme/screensaver.txt
 ```
 
 When present, those files are copied to `~/.config/omarchy/branding/about.txt` for Fastfetch/About and `~/.config/omarchy/branding/screensaver.txt` for the screensaver. Missing theme branding files leave the existing user branding unchanged.
@@ -151,7 +151,7 @@ Example:
 hook_dir = "~/.config/omarchy/hooks/theme-set.d"
 state_dir = "~/.local/share/thpm"
 theme_env = "~/.local/share/thpm/lib/theme-env.sh"
-colors_file = "~/.config/omarchy/current/theme/colors.toml"
+colors_file = "~/.local/state/omarchy/current/theme/colors.toml"
 skills_dir = "~/.local/share/thpm/skills"
 
 [updates]
@@ -274,10 +274,10 @@ Select the generated `Omarchy Current` theme inside Hermes, then restart Hermes 
 
 ### `colors.toml not found`
 
-Use an Omarchy 3.3+ compatible theme. `thpm` reads:
+Use an Omarchy theme with `colors.toml`. `thpm` reads:
 
 ```text
-~/.config/omarchy/current/theme/colors.toml
+~/.local/state/omarchy/current/theme/colors.toml
 ```
 
 Generated terminal or app theme files are not treated as the source of truth.

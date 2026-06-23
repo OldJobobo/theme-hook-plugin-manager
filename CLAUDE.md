@@ -31,7 +31,7 @@ omarchy-hook theme-set                      ← Omarchy fires this on theme chan
 
 Plus the user-facing CLI `thpm` (this repo's `thpm` script), installed to `~/.local/bin/thpm`.
 
-**Source of theme colors:** `~/.config/omarchy/current/theme/colors.toml` (Omarchy 3.3+). The previous source `alacritty.toml` is gone — it's now a generated artifact and may contain unrendered Jinja-style placeholders. Always read from `colors.toml`.
+**Source of theme colors:** `~/.local/state/omarchy/current/theme/colors.toml` on Omarchy 4 / Quattro. The previous source `alacritty.toml` is gone — it's now a generated artifact and may contain unrendered Jinja-style placeholders. Always read from `colors.toml`.
 
 **Plugin contract** (defined by `theme-set` lines ~75-141, exported before iterating plugins):
 

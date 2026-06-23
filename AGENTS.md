@@ -59,4 +59,4 @@ Pull requests should include:
 
 ## Omarchy Compatibility Notes
 
-Theme data must come from `~/.config/omarchy/current/theme/colors.toml`. Do not treat generated app theme files as source of truth. If Omarchy defaults change, update `tests/omarchy-defaults.contract` and the related tests with the code change.
+Theme data must come from the active colors file resolved by `lib/theme-env.sh`, preferring `~/.local/state/omarchy/current/theme/colors.toml`. Do not treat generated app theme files as source of truth. If Omarchy defaults change, update `tests/omarchy-defaults.contract` and the related tests with the code change.

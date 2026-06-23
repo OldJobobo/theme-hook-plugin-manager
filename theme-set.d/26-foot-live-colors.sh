@@ -3,9 +3,9 @@ source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 set -u
 
 LOG_FILE="/tmp/foot-theme-hook.log"
-FOOT_THEME_FILE="$HOME/.config/omarchy/current/theme/foot.ini"
+FOOT_THEME_FILE="$THPM_CURRENT_THEME_DIR/foot.ini"
 FOOT_BASE_CONFIG="$HOME/.config/foot/foot.ini"
-OMARCHY_COLORS_FILE="$HOME/.config/omarchy/current/theme/colors.toml"
+OMARCHY_COLORS_FILE="$THPM_CURRENT_THEME_DIR/colors.toml"
 ENABLED="${FOOT_LIVE_THEME:-1}"
 
 log() {

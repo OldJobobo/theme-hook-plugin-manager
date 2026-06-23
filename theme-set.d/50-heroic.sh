@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-output_file="$HOME/.config/omarchy/current/theme/heroic.css"
+output_file="$THPM_CURRENT_THEME_DIR/heroic.css"
 
 if ! command -v heroic >/dev/null 2>&1; then
     skipped "Heroic Launcher"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-output_file="$HOME/.config/omarchy/current/theme/gtk.css"
-light_file="$HOME/.config/omarchy/current/theme/light.mode"
+output_file="$THPM_CURRENT_THEME_DIR/gtk.css"
+light_file="$THPM_LIGHT_MODE_FILE"
 gtk3_dir="$HOME/.config/gtk-3.0"
 gtk4_dir="$HOME/.config/gtk-4.0"
 gtk3_file="$gtk3_dir/gtk.css"

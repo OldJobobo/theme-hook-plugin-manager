@@ -152,18 +152,18 @@ thpm run
 `thpm` reads colors from:
 
 ```text
-~/.config/omarchy/current/theme/colors.toml
+~/.local/state/omarchy/current/theme/colors.toml
 ```
 
-This matches Omarchy 3.3+ themes.
+This matches Omarchy 4 / Quattro active theme state. Legacy Omarchy installs that still use `~/.config/omarchy/current/theme/colors.toml` are handled by the shared runtime fallback.
 
 ## Theme Branding Files
 
 The bundled branding plugin is installed disabled by default. After `thpm enable branding`, it uses these active-theme files when they exist:
 
 ```text
-~/.config/omarchy/current/theme/about.txt
-~/.config/omarchy/current/theme/screensaver.txt
+~/.local/state/omarchy/current/theme/about.txt
+~/.local/state/omarchy/current/theme/screensaver.txt
 ```
 
 `about.txt` is copied to `~/.config/omarchy/branding/about.txt` for Fastfetch/About. `screensaver.txt` is copied to `~/.config/omarchy/branding/screensaver.txt` for the Omarchy screensaver. Missing branding files are non-destructive and leave the current user branding in place.

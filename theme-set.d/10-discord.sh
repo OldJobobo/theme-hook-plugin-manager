@@ -3,8 +3,8 @@
 # shellcheck source=../lib/theme-env.sh
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
-theme_file="$HOME/.config/omarchy/current/theme/vencord.theme.css"
-theme_name_file="$HOME/.config/omarchy/current/theme.name"
+theme_file="$THPM_CURRENT_THEME_DIR/vencord.theme.css"
+theme_name_file="$THPM_THEME_NAME_FILE"
 generated_file="$THPM_STATE_DIR/discord/vencord-base16.theme.css"
 possible_paths=(
     "$HOME/.config/Vencord/themes"
