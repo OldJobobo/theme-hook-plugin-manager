@@ -996,8 +996,12 @@ doctor_check_plugin_specific() {
         foot-live-colors) doctor_check_file "$HOME/.config/omarchy/current/theme/foot.ini" "Omarchy Foot theme" ;;
         zellij)
             doctor_check_command zellij Zellij
-            doctor_check_file "$HOME/.config/zellij/themes/current.kdl" "Zellij current theme"
             doctor_check_file "$HOME/.config/zellij/config.kdl" "Zellij config"
+            if [[ -f "$HOME/.config/zellij/config.kdl" ]] && grep -Fq "thpm-zellij-theme-start" "$HOME/.config/zellij/config.kdl"; then
+                doctor_ok "Zellij inline current theme found"
+            else
+                doctor_warn "Zellij inline current theme missing; run thpm run"
+            fi
         ;;
         vscode) doctor_check_editor_theme_extension "VS Code" code "$HOME/.vscode/extensions" ;;
         cursor) doctor_check_editor_theme_extension Cursor cursor "$HOME/.cursor/extensions" ;;

@@ -65,19 +65,19 @@ Some apps also require one-time selection of the generated Omarchy theme inside 
 
 ### Zellij
 
-The Zellij plugin writes the active Omarchy colors to:
+The Zellij plugin writes the active Omarchy colors into a managed inline theme block in:
 
 ```text
-~/.config/zellij/themes/current.kdl
+~/.config/zellij/config.kdl
 ```
 
-Enable the plugin with `thpm enable zellij`, run `thpm run`, and set this once in `~/.config/zellij/config.kdl`:
+Enable the plugin with `thpm enable zellij` and run `thpm run`. The plugin preserves existing keybindings, layouts, and other config outside its marked block, and ensures the active theme is:
 
 ```kdl
 theme "current"
 ```
 
-The plugin does not edit Zellij keybindings, layouts, or the main config. If the active Omarchy theme ships `zellij.kdl`, that file is copied into `current.kdl`; otherwise the plugin generates a Zellij theme from `colors.toml`.
+Inline themes in `config.kdl` are hot-reloaded by Zellij. If the active Omarchy theme ships `zellij.kdl`, that theme is embedded in the managed block; otherwise the plugin generates a Zellij theme from `colors.toml`.
 
 ## Supported Plugins
 
