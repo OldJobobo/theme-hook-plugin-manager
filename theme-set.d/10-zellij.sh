@@ -54,7 +54,7 @@ themes {
             emphasis_3 ${rgb_bright_magenta//,/}
         }
         table_title {
-            base ${rgb_normal_blue//,/}
+            base ${rgb_normal_magenta//,/}
             background ${rgb_primary_background//,/}
             emphasis_0 ${rgb_normal_yellow//,/}
             emphasis_1 ${rgb_normal_cyan//,/}
