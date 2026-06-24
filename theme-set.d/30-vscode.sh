@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
-output_file="$HOME/.config/omarchy/current/theme/vscode_colors.json"
+theme_dir="$(dirname "$input_file")"   # input_file is resolved by theme-env.sh (config-aware)
+output_file="$theme_dir/vscode_colors.json"
 
 if ! command -v code >/dev/null 2>&1; then
     skipped "VS Code"
@@ -11,7 +12,74 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # check current theme for vscode.json
-if [[ -f "$HOME/.config/omarchy/current/theme/vscode.json" ]]; then
+if [[ -f "$theme_dir/vscode.json" ]]; then
+    # A theme themes VS Code in one of two ways:
+    #   - a MARKETPLACE id in vscode.json (Publisher.name) -> omarchy-theme-set-vscode already
+    #     ran `code --install-extension <id>` for it; nothing to do here.
+    #   - a LOCAL extension (id "local.*") shipped as a "vscode-extension/" source folder ->
+    #     `code --install-extension local.*` can't reach a Marketplace, so we build a real .vsix
+    #     from that folder and install it (the only reliable way to register a local theme).
+    # Building from source means no committed binary can go stale; a prebuilt *.vsix in the theme
+    # dir is still honoured as a fallback. Reinstall only when the extension is missing or the
+    # source/.vsix changed (sha marker), so it is not rebuilt on every theme switch.
+    # (code/jq are guaranteed present above via skipped.)
+    ext="$(jq -r '.extension // empty' "$theme_dir/vscode.json")"
+    ext_src="$theme_dir/vscode-extension"
+    shopt -s nullglob ; prebuilt=("$theme_dir"/*.vsix) ; shopt -u nullglob
+
+    # Nothing local to install (a Marketplace id or a built-in colorTheme) -> omarchy-theme-set-vscode
+    # already handled it; leave it alone.
+    if [[ ! -d "$ext_src" && ${#prebuilt[@]} -eq 0 ]]; then
+        exit 0
+    fi
+    # A local extension must declare its id so we can register and de-duplicate against it; without
+    # one we'd reinstall on every switch, so require it.
+    if [[ -z "$ext" ]]; then
+        warning "VS Code: local theme extension present but vscode.json has no 'extension' id"
+        exit 0
+    fi
+
+    state_dir="${THPM_STATE_DIR:-$HOME/.local/share/thpm}"
+    mkdir -p "$state_dir" 2>/dev/null
+    ext_safe="${ext//[^a-zA-Z0-9._-]/_}"
+    marker="$state_dir/vscode-vsix-${ext_safe}.sha"
+
+    vsix="" ; sha="" ; tmp=""
+    if [[ -d "$ext_src" ]] && command -v zip >/dev/null 2>&1; then
+        # local theme with source -> build a .vsix. sha over the SOURCE files (a zip embeds
+        # mtimes, so hashing the built .vsix would differ every run and reinstall every time).
+        sha="$(find "$ext_src" -type f -exec sha256sum {} + 2>/dev/null | sort | sha256sum | cut -d' ' -f1)"
+        if ! code --list-extensions 2>/dev/null | grep -Fxq "$ext" \
+            || [[ "$(cat "$marker" 2>/dev/null)" != "$sha" ]]; then
+            pkg_name="$(jq -r '.name // empty' "$ext_src/package.json" 2>/dev/null)"
+            pkg_pub="$(jq -r '.publisher // "local"' "$ext_src/package.json" 2>/dev/null)"
+            if [[ -n "$pkg_name" ]]; then
+                tmp="$(mktemp -d)"
+                mkdir -p "$tmp/extension"
+                cp -r "$ext_src"/. "$tmp/extension/" 2>/dev/null
+                printf '<?xml version="1.0" encoding="utf-8"?>\n<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011"><Metadata><Identity Language="en-US" Id="%s" Version="1.0.0" Publisher="%s" /><DisplayName>%s</DisplayName><Description xml:space="preserve">%s</Description><Categories>Themes</Categories></Metadata><Installation><InstallationTarget Id="Microsoft.VisualStudio.Code" /></Installation><Dependencies /><Assets><Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true" /></Assets></PackageManifest>\n' "$pkg_name" "$pkg_pub" "$pkg_name" "$pkg_name" >"$tmp/extension.vsixmanifest"
+                printf '<?xml version="1.0" encoding="utf-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="json" ContentType="application/json" /><Default Extension="vsixmanifest" ContentType="text/xml" /></Types>\n' >"$tmp/[Content_Types].xml"
+                ( cd "$tmp" && zip -rqX theme.vsix extension.vsixmanifest '[Content_Types].xml' extension ) && vsix="$tmp/theme.vsix"
+            fi
+        fi
+    else
+        # no source folder -> honour a prebuilt *.vsix shipped in the theme dir
+        sha="$(sha256sum "${prebuilt[0]}" 2>/dev/null | cut -d' ' -f1)"
+        if ! code --list-extensions 2>/dev/null | grep -Fxq "$ext" \
+            || [[ "$(cat "$marker" 2>/dev/null)" != "$sha" ]]; then
+            vsix="${prebuilt[0]}"
+        fi
+    fi
+
+    if [[ -n "$vsix" ]]; then
+        if code --install-extension "$vsix" --force >/dev/null 2>&1; then
+            [[ -n "$sha" ]] && printf '%s\n' "$sha" >"$marker" 2>/dev/null
+            success "VS Code (${ext:-theme})"
+        else
+            warning "VS Code extension failed to install (${ext:-theme})"
+        fi
+    fi
+    [[ -n "$tmp" ]] && rm -rf "$tmp"
     exit 0
 fi
 
