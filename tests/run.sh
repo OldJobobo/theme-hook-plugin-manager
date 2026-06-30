@@ -2386,6 +2386,58 @@ test_tmux_plugin_prefers_existing_legacy_config() {
   assert_file_missing "$xdg_config" "tmux plugin does not create xdg config when legacy config exists"
 }
 
+test_vscode_plugin_builds_local_extension_from_source() {
+  local home_dir="$TMP_ROOT/vscode-build-home"
+  local bin_dir="$TMP_ROOT/vscode-build-bin"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
+  local install_log="$home_dir/code-install.log"
+
+  if ! command -v zip >/dev/null 2>&1; then
+    pass "vscode local-extension build test skipped (zip not installed)"
+    return 0
+  fi
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$hook_dir" "$bin_dir" "$theme_dir/vscode-extension/themes"
+  cp "$ROOT_DIR/theme-set.d/30-vscode.sh" "$hook_dir/30-vscode.sh"
+  chmod +x "$hook_dir/30-vscode.sh"
+  printf '{"name":"Foo","extension":"local.theme-foo"}\n' > "$theme_dir/vscode.json"
+  printf '{"name":"theme-foo","publisher":"local","contributes":{"themes":[{"label":"Foo","uiTheme":"vs-dark","path":"./themes/foo.json"}]}}\n' > "$theme_dir/vscode-extension/package.json"
+  printf '{"name":"Foo","colors":{"editor.background":"#101112"}}\n' > "$theme_dir/vscode-extension/themes/foo.json"
+  make_stub_bin "$bin_dir" code 'case "$1" in --list-extensions) cat "$HOME/code-installed.txt" 2>/dev/null ;; --install-extension) printf "%s\n" "$2" >> "$HOME/code-install.log"; printf "local.theme-foo\n" >> "$HOME/code-installed.txt" ;; esac'
+  make_stub_bin "$bin_dir" pgrep 'exit 1'
+  make_stub_bin "$bin_dir" notify-send 'exit 0'
+
+  PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+  assert_file_exists "$install_log" "vscode plugin builds and installs a local extension from vscode-extension/"
+  assert_eq "1" "$(wc -l < "$install_log" 2>/dev/null | tr -d ' ')" "local extension installed exactly once"
+
+  PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+  assert_eq "1" "$(wc -l < "$install_log" 2>/dev/null | tr -d ' ')" "unchanged local theme is not reinstalled on the next theme switch"
+}
+
+test_vscode_plugin_requires_extension_id_for_local_theme() {
+  local home_dir="$TMP_ROOT/vscode-noext-home"
+  local bin_dir="$TMP_ROOT/vscode-noext-bin"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$hook_dir" "$bin_dir" "$theme_dir/vscode-extension/themes"
+  cp "$ROOT_DIR/theme-set.d/30-vscode.sh" "$hook_dir/30-vscode.sh"
+  chmod +x "$hook_dir/30-vscode.sh"
+  printf '{"name":"Foo"}\n' > "$theme_dir/vscode.json"
+  printf '{"name":"theme-foo","publisher":"local","contributes":{"themes":[]}}\n' > "$theme_dir/vscode-extension/package.json"
+  printf '{"name":"Foo","colors":{}}\n' > "$theme_dir/vscode-extension/themes/foo.json"
+  make_stub_bin "$bin_dir" code 'case "$1" in --install-extension) printf "%s\n" "$2" >> "$HOME/code-install.log" ;; esac; exit 0'
+  make_stub_bin "$bin_dir" pgrep 'exit 1'
+  make_stub_bin "$bin_dir" notify-send 'exit 0'
+
+  PATH="$bin_dir:$PATH" run_theme_hooks "$home_dir" >/dev/null
+  assert_file_missing "$home_dir/code-install.log" "local theme without an extension id is not installed (no reinstall loop)"
+}
+
 test_vscode_plugin_skips_when_theme_provides_vscode_json() {
   local home_dir="$TMP_ROOT/vscode-skip-home"
   local bin_dir="$TMP_ROOT/vscode-skip-bin"
@@ -3499,6 +3551,8 @@ main() {
   test_tmux_plugin_prefers_existing_legacy_config
   test_vscode_plugin_skips_when_theme_provides_vscode_json
   test_vscode_plugin_patches_extension_manifest_and_installs_theme
+  test_vscode_plugin_builds_local_extension_from_source
+  test_vscode_plugin_requires_extension_id_for_local_theme
   test_cursor_plugin_suppresses_electron_deprecation_warning
   test_theme_set_extracts_colors_with_leading_whitespace_and_comments
   test_install_preserves_disabled_plugins_and_installs_files
