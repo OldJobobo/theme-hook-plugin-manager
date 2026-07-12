@@ -47,6 +47,11 @@ source "${THPM_THEME_ENV:-$HOME/.local/share/thpm/lib/theme-env.sh}"
 
 Hex values do not include `#`.
 
+The shared runtime prefers Omarchy's semantic color keys (`bg`, `fg`,
+`accent`, `selection`, named colors, and their bright variants). Legacy
+terminal keys (`background`, `foreground`, `cursor`, `selection_*`, and
+`color0` through `color15`) remain supported as per-value fallbacks.
+
 Common values:
 
 - `primary_background`

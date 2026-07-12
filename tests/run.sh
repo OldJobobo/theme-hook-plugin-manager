@@ -163,6 +163,35 @@ color15 = "#ffffff"
 EOF
 }
 
+write_semantic_colors_fixture() {
+  local home_dir="$1"
+  local theme_dir="$home_dir/.local/state/omarchy/current/theme"
+
+  mkdir -p "$theme_dir"
+  cat > "$theme_dir/colors.toml" <<'EOF'
+accent = "#7aa2f7"
+bg = "#1a1b26"
+dark_bg = "#13141c"
+selection = "#292e42"
+muted = "#414868"
+fg = "#a9b1d6"
+light_fg = "#b4bee6"
+bright_fg = "#c0caf5"
+red = "#f7768e"
+yellow = "#e0af68"
+green = "#9ece6a"
+cyan = "#449dab"
+blue = "#7aa2f7"
+magenta = "#ad8ee6"
+bright_red = "#ff7a93"
+bright_yellow = "#ff9e64"
+bright_green = "#b9f27c"
+bright_cyan = "#0db9d7"
+bright_blue = "#7da6ff"
+bright_magenta = "#bb9af7"
+EOF
+}
+
 make_stub_bin() {
   local bin_dir="$1"
   local name="$2"
@@ -986,6 +1015,55 @@ EOF
   else
     pass "theme-set skips .sample hooks"
   fi
+}
+
+test_theme_env_prefers_semantic_colors_with_legacy_fallback() {
+  local home_dir="$TMP_ROOT/semantic-colors-home"
+  local output_file="$TMP_ROOT/semantic-colors-output"
+
+  write_colors_fixture "$home_dir"
+  cat >> "$home_dir/.local/state/omarchy/current/theme/colors.toml" <<'EOF'
+accent = "#010203"
+bg = "#111213"
+dark_bg = "#212223"
+selection = "#313233"
+muted = "#414243"
+fg = "#515253"
+light_fg = "#616263"
+bright_fg = "#717273"
+red = "#810000"
+blue = "#000082"
+bright_blue = "#000083"
+EOF
+
+  HOME="$home_dir" bash -c "
+source '$ROOT_DIR/lib/theme-env.sh'
+printf '%s\n' \"\$primary_background|\$primary_foreground|\$cursor_color|\$selection_background|\$selection_foreground|\$normal_black|\$normal_red|\$normal_green|\$normal_blue|\$bright_black|\$bright_blue|\$bright_white\" > '$output_file'
+"
+
+  assert_eq "111213|515253|010203|313233|717273|212223|810000|222222|000082|414243|000083|717273" "$(cat "$output_file")" "theme env prefers semantic colors and falls back per role to legacy colors"
+}
+
+test_thpm_doctor_accepts_semantic_colors() {
+  local home_dir="$TMP_ROOT/doctor-semantic-colors-home"
+  local bin_dir="$TMP_ROOT/doctor-semantic-colors-bin"
+  local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
+  local runtime_dir="$home_dir/.local/share/thpm/lib"
+  local output
+  local status
+
+  write_semantic_colors_fixture "$home_dir"
+  mkdir -p "$bin_dir" "$hook_dir" "$runtime_dir"
+  cp "$ROOT_DIR/lib/theme-env.sh" "$runtime_dir/theme-env.sh"
+
+  set +e
+  output="$(PATH="$bin_dir:$PATH" THPM_THEME_ENV="$ROOT_DIR/lib/theme-env.sh" HOME="$home_dir" "$ROOT_DIR/thpm" doctor 2>&1)"
+  status=$?
+  set -e
+
+  assert_success "$status" "thpm doctor accepts the semantic Omarchy color schema"
+  assert_contains "$output" "colors.toml has compatible Omarchy color keys" "thpm doctor reports semantic colors as compatible"
+  assert_not_contains "$output" "colors.toml is missing valid" "thpm doctor does not demand legacy terminal keys"
 }
 
 test_theme_set_handles_commented_palette_color() {
@@ -2165,6 +2243,24 @@ EOF
   assert_contains "$(cat "$config_file")" "table_title {
             base 85 85 85" "zellij table title uses normal magenta"
   assert_contains "$(cat "$config_file")" "background 34 34 34" "zellij theme uses selection background"
+}
+
+test_zellij_plugin_generates_from_semantic_colors() {
+  local home_dir="$TMP_ROOT/zellij-semantic-home"
+  local bin_dir="$TMP_ROOT/zellij-semantic-bin"
+  local config_file="$home_dir/.config/zellij/config.kdl"
+
+  write_semantic_colors_fixture "$home_dir"
+  mkdir -p "$bin_dir"
+  make_stub_bin "$bin_dir" zellij 'exit 0'
+
+  PATH="$bin_dir:$PATH" THPM_THEME_ENV="$ROOT_DIR/lib/theme-env.sh" HOME="$home_dir" bash "$ROOT_DIR/theme-set.d/10-zellij.sh" >/dev/null
+
+  assert_contains "$(cat "$config_file")" "background 26 27 38" "zellij fallback uses semantic bg"
+  assert_contains "$(cat "$config_file")" "base 169 177 214" "zellij fallback uses semantic fg"
+  assert_contains "$(cat "$config_file")" "background 41 46 66" "zellij fallback uses semantic selection"
+  assert_contains "$(cat "$config_file")" "emphasis_3 173 142 230" "zellij fallback uses semantic magenta"
+  assert_not_contains "$(cat "$config_file")" "base 0 0 0" "zellij semantic fallback does not collapse base colors to black"
 }
 
 test_zellij_plugin_prefers_theme_provided_kdl() {
@@ -3493,6 +3589,8 @@ main() {
   test_thpm_open_uses_xdg_open_for_hook_dir
   test_thpm_gtk_post_enable_disable_updates_gsettings
   test_theme_set_exports_colors_and_runs_enabled_hooks
+  test_theme_env_prefers_semantic_colors_with_legacy_fallback
+  test_thpm_doctor_accepts_semantic_colors
   test_theme_set_handles_commented_palette_color
   test_theme_env_errors_without_colors_file
   test_theme_set_reports_hook_failure
@@ -3541,6 +3639,7 @@ main() {
   test_cliamp_native_handles_crlf_opt_in_marker
   test_superfile_plugin_writes_theme_and_requests_restart
   test_zellij_plugin_generates_current_theme
+  test_zellij_plugin_generates_from_semantic_colors
   test_zellij_plugin_prefers_theme_provided_kdl
   test_zellij_plugin_skips_when_zellij_missing
   test_swaync_plugin_installs_theme_files_and_reloads

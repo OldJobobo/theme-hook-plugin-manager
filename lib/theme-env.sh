@@ -187,6 +187,19 @@ extract_color() {
     ' "$input_file"
 }
 
+extract_color_preferred() {
+    local color_name
+    local value
+
+    for color_name in "$@"; do
+        value="$(extract_color "$color_name")"
+        if [[ -n "$value" ]]; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    done
+}
+
 hex2rgb() {
     local hex_input=$1
 
@@ -291,27 +304,27 @@ require_restart() {
     esac
 }
 
-primary_foreground=$(extract_color "foreground")
-primary_background=$(extract_color "background")
-cursor_color=$(extract_color "cursor")
-selection_foreground=$(extract_color "selection_foreground")
-selection_background=$(extract_color "selection_background")
-normal_black=$(extract_color "color0")
-normal_red=$(extract_color "color1")
-normal_green=$(extract_color "color2")
-normal_yellow=$(extract_color "color3")
-normal_blue=$(extract_color "color4")
-normal_magenta=$(extract_color "color5")
-normal_cyan=$(extract_color "color6")
-normal_white=$(extract_color "color7")
-bright_black=$(extract_color "color8")
-bright_red=$(extract_color "color9")
-bright_green=$(extract_color "color10")
-bright_yellow=$(extract_color "color11")
-bright_blue=$(extract_color "color12")
-bright_magenta=$(extract_color "color13")
-bright_cyan=$(extract_color "color14")
-bright_white=$(extract_color "color15")
+primary_foreground=$(extract_color_preferred "fg" "foreground")
+primary_background=$(extract_color_preferred "bg" "background")
+cursor_color=$(extract_color_preferred "accent" "cursor")
+selection_foreground=$(extract_color_preferred "bright_fg" "selection_foreground")
+selection_background=$(extract_color_preferred "selection" "selection_background")
+normal_black=$(extract_color_preferred "dark_bg" "color0")
+normal_red=$(extract_color_preferred "red" "color1")
+normal_green=$(extract_color_preferred "green" "color2")
+normal_yellow=$(extract_color_preferred "yellow" "color3")
+normal_blue=$(extract_color_preferred "blue" "color4")
+normal_magenta=$(extract_color_preferred "magenta" "color5")
+normal_cyan=$(extract_color_preferred "cyan" "color6")
+normal_white=$(extract_color_preferred "light_fg" "color7")
+bright_black=$(extract_color_preferred "muted" "color8")
+bright_red=$(extract_color_preferred "bright_red" "color9")
+bright_green=$(extract_color_preferred "bright_green" "color10")
+bright_yellow=$(extract_color_preferred "bright_yellow" "color11")
+bright_blue=$(extract_color_preferred "bright_blue" "color12")
+bright_magenta=$(extract_color_preferred "bright_magenta" "color13")
+bright_cyan=$(extract_color_preferred "bright_cyan" "color14")
+bright_white=$(extract_color_preferred "bright_fg" "color15")
 
 export primary_background primary_foreground cursor_color selection_foreground selection_background
 export normal_black normal_red normal_green normal_yellow normal_blue normal_magenta normal_cyan normal_white
