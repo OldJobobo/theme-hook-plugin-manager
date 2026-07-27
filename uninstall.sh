@@ -47,6 +47,7 @@ bundled_plugins=(
     10-gtk.sh
     10-qt6ct.sh
     10-spotify.sh
+    10-spotify-text.sh
     10-superfile.sh
     10-tmux.sh
     10-vicinae.sh

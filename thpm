@@ -338,6 +338,34 @@ disable_conflicting_discord_plugin() {
     done
 }
 
+disable_conflicting_spotify_plugin() {
+    local enabled_plugin="$1"
+    local conflicting_plugin
+    local hook
+    local hook_name
+    local disabled_hook
+
+    case "$enabled_plugin" in
+        spotify) conflicting_plugin="spotify-text" ;;
+        spotify-text) conflicting_plugin="spotify" ;;
+        *) return 0 ;;
+    esac
+
+    [[ -d "$HOOK_DIR" ]] || return 0
+    for hook in "$HOOK_DIR"/*.sh; do
+        [[ -f "$hook" ]] || continue
+        hook_name=$(basename "$hook")
+        hook_name=${hook_name%.sh}
+        hook_name=${hook_name#*-}
+        [[ "$hook_name" == "$conflicting_plugin" ]] || continue
+
+        disabled_hook="$hook.sample"
+        mv "$hook" "$disabled_hook"
+        printf '%sDisabled conflicting Spotify plugin: %s %s\n' "$(dot warn)" "$conflicting_plugin" "$(muted_text "($disabled_hook)")"
+        return 0
+    done
+}
+
 get_hook_list() {
     enabled_hooks=()
     disabled_hooks=()
@@ -456,7 +484,8 @@ post_enable() {
                 fi
             fi
         ;;
-        "spotify")
+        "spotify"|"spotify-text")
+            disable_conflicting_spotify_plugin "$1"
             if command -v spicetify >/dev/null 2>&1; then
                 spicetify apply
             fi
@@ -500,7 +529,7 @@ post_disable() {
                 fi
             fi
         ;;
-        "spotify")
+        "spotify"|"spotify-text")
             if command -v spicetify >/dev/null 2>&1; then
                 spicetify restore backup apply
             fi
@@ -1004,7 +1033,7 @@ doctor_check_plugin_specific() {
             fi
         ;;
         qt6ct) doctor_check_command qt6ct Qt6ct ;;
-        spotify)
+        spotify|spotify-text)
             doctor_check_command spicetify Spicetify
             doctor_check_dir "$HOME/.config/spicetify" "Spicetify config directory"
         ;;
