@@ -529,9 +529,14 @@ post_disable() {
                 fi
             fi
         ;;
-        "spotify"|"spotify-text")
+        "spotify")
             if command -v spicetify >/dev/null 2>&1; then
                 spicetify restore backup apply
+            fi
+        ;;
+        "spotify-text")
+            if command -v spicetify >/dev/null 2>&1; then
+                spicetify restore
             fi
         ;;
         "steam")
