@@ -89,7 +89,7 @@ Inline themes in `config.kdl` are hot-reloaded by Zellij. If the active Omarchy 
 
 **Terminal and CLI:** cliamp, Cava, Fish, Foot live colors, fzf, Superfile, tmux, Zellij
 
-**Games and media:** Heroic Games Launcher, Spotify using Spicetify, Steam
+**Games and media:** Heroic Games Launcher, Spotify using Spicetify (default look, or the optional minimal [text](https://github.com/spicetify/spicetify-themes/tree/master/text) theme via the `spotify-text` plugin), Steam
 
 ### Omarchy Branding
 
@@ -312,6 +312,8 @@ Make sure Spicetify is installed and configured. If Spotify changed after an upd
 spicetify restore backup apply
 thpm run
 ```
+
+`spotify-text` is installed disabled by default as an alternative to `spotify`. It applies the minimal [text](https://github.com/spicetify/spicetify-themes/tree/master/text) theme from spicetify-themes instead of the default styling. Enable only one Spotify plugin at a time; enabling one automatically disables the other.
 
 ### Obsidian Terminal is not changing
 

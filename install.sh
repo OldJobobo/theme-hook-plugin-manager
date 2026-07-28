@@ -35,6 +35,7 @@ bundled_plugins=(
     10-gtk.sh
     10-qt6ct.sh
     10-spotify.sh
+    10-spotify-text.sh
     10-superfile.sh
     10-tmux.sh
     10-vicinae.sh
@@ -61,6 +62,7 @@ bundled_plugins=(
 default_disabled_plugins=(
     10-branding.sh
     11-discord-system24.sh
+    10-spotify-text.sh
     10-zellij.sh
 )
 
