@@ -83,7 +83,7 @@ Inline themes in `config.kdl` are hot-reloaded by Zellij. If the active Omarchy 
 
 **Browsers:** Firefox, Qutebrowser, Zen Browser
 
-**Editors and writing:** Cursor, Obsidian Terminal plugin, Typora, VS Code, Windsurf, Zed
+**Editors and writing:** Cursor, Obsidian Terminal plugin, Typora, VS Code, Windsurf, Zed, Emacs / Doom Emacs
 
 **Desktop and UI:** Discord clients using Vencord-compatible themes, optional Discord System24 theme, GTK apps, Hermes, nwg-dock-hyprland, Omarchy branding, Qt6 apps using qt6ct, SwayNC, Vicinae
 
@@ -120,17 +120,17 @@ thpm update
 thpm remove
 ```
 
-| Command | What it does |
-| --- | --- |
-| `thpm list` | Show enabled and disabled plugins |
-| `thpm enable <name>` | Enable a plugin |
-| `thpm disable <name>` | Disable a plugin |
-| `thpm doctor [name]` | Diagnose thpm setup and plugin theming issues |
-| `thpm run` | Ask Omarchy to fire the `theme-set` hook now |
+| Command               | What it does                                              |
+| --------------------- | --------------------------------------------------------- |
+| `thpm list`           | Show enabled and disabled plugins                         |
+| `thpm enable <name>`  | Enable a plugin                                           |
+| `thpm disable <name>` | Disable a plugin                                          |
+| `thpm doctor [name]`  | Diagnose thpm setup and plugin theming issues             |
+| `thpm run`            | Ask Omarchy to fire the `theme-set` hook now              |
 | `thpm install skills` | Install a bundled agent skill, currently for Codex/OpenAI |
-| `thpm open` | Open the plugin directory |
-| `thpm update` | Re-run the installer |
-| `thpm remove` | Uninstall `thpm` |
+| `thpm open`           | Open the plugin directory                                 |
+| `thpm update`         | Re-run the installer                                      |
+| `thpm remove`         | Uninstall `thpm`                                          |
 
 `thpm list` and `thpm help` may show a cached notice when a newer commit is available. They do not update files automatically; run `thpm update` to install updates.
 
