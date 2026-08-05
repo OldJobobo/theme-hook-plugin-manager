@@ -57,6 +57,7 @@ bundled_plugins=(
     25-swaync.sh
     26-foot-live-colors.sh
     30-cursor.sh
+    30-emacs.sh
     30-vscode.sh
     30-windsurf.sh
     35-obsidian-terminal.sh
@@ -119,6 +120,11 @@ fi
 
 # Remove Hermes theme
 rm -f "$HOME/.config/Hermes/omarchy-theme.json"
+
+# Remove Emacs / Doom Emacs generated theme files
+for dir in "$HOME/.config/emacs" "$HOME/.emacs.d" "$HOME/.config/doom" "$HOME/.doom.d"; do
+    rm -f "$dir/omarchy-colors.el" "$dir/themes/omarchy-colors.el"
+done
 
 # Remove Vicinae theme
 if command -v vicinae >/dev/null 2>&1; then

@@ -1898,6 +1898,54 @@ EOF
   assert_eq "#101112" "$(jq -r '.terminalOptions.theme.background' "$data_file")" "obsidian terminal plugin direct run loads theme env"
 }
 
+test_emacs_plugin_skips_when_missing() {
+  local home_dir="$TMP_ROOT/emacs-missing-home"
+  local stub_bin="$TMP_ROOT/stub-bin"
+  local output
+
+  mkdir -p "$stub_bin"
+  cp "$(command -v bash)" "$stub_bin/"
+  cp "$(command -v env)" "$stub_bin/"
+  write_colors_fixture "$home_dir"
+
+  output="$(PATH="$stub_bin" XDG_CONFIG_HOME="$home_dir/.config" THPM_THEME_ENV="$ROOT_DIR/lib/theme-env.sh" HOME="$home_dir" "$ROOT_DIR/theme-set.d/30-emacs.sh")"
+
+  assert_contains "$output" "Emacs not found" "emacs plugin skips cleanly when emacs is missing"
+}
+
+test_emacs_plugin_generates_standard_emacs_theme() {
+  local home_dir="$TMP_ROOT/emacs-standard-home"
+  local emacs_dir="$home_dir/.config/emacs"
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$emacs_dir"
+
+  XDG_CONFIG_HOME="$home_dir/.config" THPM_THEME_ENV="$ROOT_DIR/lib/theme-env.sh" HOME="$home_dir" "$ROOT_DIR/theme-set.d/30-emacs.sh" >/dev/null
+
+  assert_file_exists "$emacs_dir/omarchy-colors.el" "emacs plugin generates omarchy-colors.el"
+  assert_file_exists "$emacs_dir/themes/omarchy-theme.el" "emacs plugin generates omarchy-theme.el"
+  assert_file_exists "$emacs_dir/omarchy.el" "emacs plugin generates omarchy.el"
+  assert_contains "$(cat "$emacs_dir/omarchy-colors.el")" 'omarchy-color-bg "#101112"' "emacs plugin omarchy-colors.el uses primary background"
+  assert_contains "$(cat "$emacs_dir/themes/omarchy-theme.el")" "deftheme omarchy" "omarchy-theme.el defines omarchy theme"
+  assert_contains "$(cat "$emacs_dir/omarchy.el")" "omarchy-apply-theme" "omarchy.el defines omarchy-apply-theme"
+}
+
+test_emacs_plugin_generates_doom_emacs_theme() {
+  local home_dir="$TMP_ROOT/emacs-doom-home"
+  local doom_dir="$home_dir/.config/doom"
+
+  write_colors_fixture "$home_dir"
+  mkdir -p "$doom_dir"
+
+  XDG_CONFIG_HOME="$home_dir/.config" THPM_THEME_ENV="$ROOT_DIR/lib/theme-env.sh" HOME="$home_dir" "$ROOT_DIR/theme-set.d/30-emacs.sh" >/dev/null
+
+  assert_file_exists "$doom_dir/omarchy-colors.el" "emacs plugin generates omarchy-colors.el for Doom Emacs"
+  assert_file_exists "$doom_dir/themes/omarchy-theme.el" "emacs plugin generates omarchy-theme.el for Doom Emacs"
+  assert_file_exists "$doom_dir/omarchy.el" "emacs plugin generates omarchy.el for Doom Emacs"
+  assert_contains "$(cat "$doom_dir/themes/omarchy-theme.el")" "doom-modeline" "omarchy-theme.el includes Doom modeline faces"
+  assert_contains "$(cat "$doom_dir/omarchy.el")" "doom-theme" "omarchy.el includes Doom Emacs support"
+}
+
 test_foot_plugin_respects_disable_flag() {
   local home_dir="$TMP_ROOT/foot-disabled-home"
   local hook_dir="$home_dir/.config/omarchy/hooks/theme-set.d"
@@ -3236,6 +3284,7 @@ print_coverage_summary() {
     "$ROOT_DIR/theme-set.d/25-swaync.sh"
     "$ROOT_DIR/theme-set.d/26-foot-live-colors.sh"
     "$ROOT_DIR/theme-set.d/35-obsidian-terminal.sh"
+    "$ROOT_DIR/theme-set.d/30-emacs.sh"
     "$ROOT_DIR/theme-set.d/30-vscode.sh"
     "$ROOT_DIR/theme-set.d/40-cava.sh"
     "$ROOT_DIR/theme-set.d/40-qutebrowser.sh"
@@ -3525,6 +3574,9 @@ main() {
   test_fish_plugin_writes_shell_colors
   test_obsidian_terminal_plugin_discovers_registered_vault
   test_obsidian_terminal_plugin_direct_run_loads_theme_env
+  test_emacs_plugin_skips_when_missing
+  test_emacs_plugin_generates_standard_emacs_theme
+  test_emacs_plugin_generates_doom_emacs_theme
   test_foot_plugin_respects_disable_flag
   test_foot_plugin_logs_missing_theme_file
   test_foot_plugin_reads_theme_and_logs_no_ttys

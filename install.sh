@@ -47,6 +47,7 @@ bundled_plugins=(
     30-cursor.sh
     30-vscode.sh
     30-windsurf.sh
+    30-emacs.sh
     35-obsidian-terminal.sh
     40-cava.sh
     40-firefox.sh
